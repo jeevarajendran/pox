@@ -67,6 +67,9 @@ def handle_HELLO (con, msg): #S
   #con.msg("HELLO wire protocol " + hex(msg.version))
 
   # Send a features request
+  print(" Jeeva controller : Received Hello request")
+  #print(" Jeeva controller : Got the connection from :", con.info, "\n")
+  print(" Jeeva controller : Got the connection from :", con.sock.getpeername(), "\n")
   msg = of.ofp_features_request()
   con.send(msg)
 
@@ -173,8 +176,11 @@ def handle_PORT_STATUS (con, msg): #A
     con.raiseEventNoErrors(PortStatus, con, msg)
 
 def handle_PACKET_IN (con, msg): #A
+  print(" *** Jeeva controller : Got packet_in message ", msg.show(), "\n")
   e = con.ofnexus.raiseEventNoErrors(PacketIn, con, msg)
+  print(" *** Jeeva controller : After calling con.ofnexus.raiseEventNoErrors , e :", e, "\n")
   if e is None or e.halt != True:
+    print(" *** Jeeva controller : e is none \n")
     con.raiseEventNoErrors(PacketIn, con, msg)
 
 def handle_ERROR_MSG (con, msg): #A
@@ -379,6 +385,7 @@ class DeferredSender (threading.Thread):
 
 class DummyOFNexus (object):
   def raiseEventNoErrors (self, event, *args, **kw):
+    print("raised on dummy OpenFlow nexus \n")
     log.warning("%s raised on dummy OpenFlow nexus" % event)
   def raiseEvent (self, event, *args, **kw):
     log.warning("%s raised on dummy OpenFlow nexus" % event)
@@ -605,6 +612,7 @@ class Connection (EventMixin):
 
     self.ofnexus = _dummyOFNexus
     self.sock = sock
+    print(" Jeeva controller , connection to switch :", self.sock.getpeername())
     self.buf = ''
     Connection.ID += 1
     self.ID = Connection.ID
@@ -852,6 +860,7 @@ class OpenFlow_01_Task (Task):
     # List of open sockets/connections to select on
     sockets = []
 
+    print(" Jeeva controller : Connecting in a socket")
     listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     try:
@@ -870,7 +879,7 @@ class OpenFlow_01_Task (Task):
     listener.listen(16)
     sockets.append(listener)
 
-    log.debug("Listening on %s:%s" %
+    log.debug(" Jeeva Controller : Listening on %s:%s" %
               (self.address, self.port))
 
     con = None

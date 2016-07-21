@@ -32,6 +32,7 @@ from pox.topology.topology import *
 from pox.openflow.discovery import *
 from pox.openflow.libopenflow_01 import xid_generator
 from pox.openflow.flow_table import FlowTable,FlowTableModification,TableEntry
+from pox.openflow.name_table import *
 from pox.lib.util import dpidToStr
 from pox.lib.addresses import *
 

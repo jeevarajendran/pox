@@ -52,7 +52,7 @@ class packet_base (object):
 
         def parse(self, data):
             # parse packet here and set member variables
-            self.parsed = True # signal that packet was succesfully parsed
+            self.parsed = True # signal that packet was successfully parsed
 
         def hdr(self, payload):
             # return fields as a string

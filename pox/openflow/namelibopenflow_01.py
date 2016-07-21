@@ -149,7 +149,7 @@ TABLE_ALL = 0xff
 TABLE_EMERGENCY = 0xfe
 
 
-class _ofp_meta (type):
+class _ofp_name_meta (type):
   """
   Metaclass for ofp messages/structures
 
@@ -162,7 +162,7 @@ class _ofp_meta (type):
       return cls._MIN_LENGTH
 
 
-class ofp_base (object):
+class ofp_name_base (object):
   """
   Base class for OpenFlow messages/structures
 
@@ -171,7 +171,7 @@ class ofp_base (object):
   implement a __len__ instance method and set a class level _MIN_LENGTH
   attribute to your minimum length.
   """
-  __metaclass__ = _ofp_meta
+  __metaclass__ = _ofp_name_meta
 
   def _assert (self):
     r = self._validate()
@@ -538,7 +538,7 @@ NO_BUFFER = 4294967295
 # ----------------------------------------------------------------------
 
 #1. Openflow Header
-class ofp_header (ofp_base):
+class ofp_header (ofp_name_base):
   _MIN_LENGTH = 8
   def __init__ (self, **kw):
     self.version = OFP_VERSION
@@ -604,7 +604,7 @@ class ofp_header (ofp_base):
     return self.__class__.__name__ + "\n  " + self.show('  ').strip()
 
 
-class ofp_stats_body_base (ofp_base):
+class ofp_stats_body_base (ofp_name_base):
   """
   Base class for stats bodies
   """
@@ -620,7 +620,7 @@ class ofp_stats_body_base (ofp_base):
   """
 
 
-class ofp_action_base (ofp_base):
+class ofp_action_base (ofp_name_base):
   """
   Base class for actions
 
@@ -643,7 +643,7 @@ class ofp_action_base (ofp_base):
     return (r, o)
 
 
-class ofp_queue_prop_base (ofp_base):
+class ofp_queue_prop_base (ofp_name_base):
   """
   Base class for queue properties
 
@@ -656,7 +656,7 @@ class ofp_queue_prop_base (ofp_base):
 
 #2. Common Structures
 ##2.1 Port Structures
-class ofp_phy_port (ofp_base):
+class ofp_phy_port (ofp_name_base):
   def __init__ (self, **kw):
     self.port_no = 0
     self.hw_addr = EMPTY_ETH
@@ -775,7 +775,7 @@ class ofp_phy_port (ofp_base):
 
 
 ##2.2 Queue Structures
-class ofp_packet_queue (ofp_base):
+class ofp_packet_queue (ofp_name_base):
   _MIN_LENGTH = 8
   def __init__ (self, **kw):
     self.queue_id = 0
@@ -874,7 +874,7 @@ class ofp_queue_prop_none (ofp_queue_prop_generic):
 
 
 @openflow_queue_prop('OFPQT_MIN_RATE', 1)
-class ofp_queue_prop_min_rate (ofp_base):
+class ofp_queue_prop_min_rate (ofp_name_base):
   def __init__ (self, **kw):
     self.rate = 0
 
@@ -918,7 +918,7 @@ class ofp_queue_prop_min_rate (ofp_base):
 
 
 ##2.3 Flow Match Structures
-class ofp_match (ofp_base):
+class ofp_match (ofp_name_base):
   adjust_wildcards = True # Set to true to "fix" outgoing wildcards
 
   @classmethod
@@ -935,13 +935,18 @@ class ofp_match (ofp_base):
     if isinstance(packet, ofp_packet_in):
       in_port = packet.in_port
       packet = ethernet(packet.data)
+    else : #Jeeva
+      print(" NAME OF LIB : Not Packet in, Just an ethernet packet")
     assert assert_type("packet", packet, ethernet, none_ok=False)
 
     match = cls()
 
     if in_port is not None:
       match.in_port = in_port
+    else: #Jeeva
+      match.in_port = 1
 
+    '''
     match.dl_src = packet.src
     match.dl_dst = packet.dst
     match.dl_type = packet.type
@@ -987,7 +992,7 @@ class ofp_match (ofp_base):
         match.nw_proto = p.opcode
         match.nw_src = p.protosrc
         match.nw_dst = p.protodst
-
+    '''
     return match
 
   def clone (self):
@@ -1383,6 +1388,7 @@ class ofp_match (ofp_base):
 
     Important for non-strict modify flow_mods etc.
     """
+    '''
     assert assert_type("other", other, ofp_match, none_ok=False)
 
     # shortcut for equal matches
@@ -1429,6 +1435,7 @@ class ofp_match (ofp_base):
       if self_nw_dst[1] > other_nw_dst[1]: return False #???
       if not IPAddr(other_nw_dst[0]).inNetwork(
             (self_nw_dst[0], self_nw_dst[1])): return False
+    '''
 
     return True
 

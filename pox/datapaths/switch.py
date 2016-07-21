@@ -38,6 +38,7 @@ from pox.openflow.libopenflow_01 import *
 import pox.openflow.libopenflow_01 as of
 from pox.openflow.util import make_type_to_unpacker_table
 from pox.openflow.flow_table import FlowTable, TableEntry
+from pox.openflow.name_table import *
 from pox.lib.packet import *
 
 import logging
@@ -54,6 +55,12 @@ class DpPacketOut (Event):
   Event raised when a dataplane packet is sent out a port
   """
   def __init__ (self, node, packet, port):
+    print(" ICN SWITCH : In Dp Packet Out (Event raised when a dataplane packet is sent out a port)")
+    print ("   Node: ", node)
+    print("   packet: ", packet)
+    print("  port: ", port)
+    #In oredr succeed assert the packet type has to be checked . assert_type in lib/util.py , or comment
+    #out the alert
     assert assert_type("packet", packet, ethernet, none_ok=False)
     Event.__init__(self)
     self.node = node
@@ -62,7 +69,7 @@ class DpPacketOut (Event):
     self.switch = node # For backwards compatability
 
 
-class SoftwareSwitchBase (object):
+class ICNSwitchBase (object):
   def __init__ (self, dpid, name=None, ports=4, miss_send_len=128,
                 max_buffers=100, max_entries=0x7fFFffFF, features=None):
     """
@@ -72,6 +79,7 @@ class SoftwareSwitchBase (object):
      - max_buffers is number of buffered packets to store
      - max_entries is max flows entries per table
     """
+    print(" ICN SWITCH BASE: Init Function")
     if name is None: name = dpid_to_str(dpid)
     self.name = name
 
@@ -86,7 +94,7 @@ class SoftwareSwitchBase (object):
     self.config_flags = 0
     self._has_sent_hello = False
 
-    self.table = FlowTable()
+    self.table = NameTable()
     self.table.addListeners(self)
 
     self._lookup_count = 0
@@ -103,6 +111,7 @@ class SoftwareSwitchBase (object):
     self.port_stats = {}
 
     for port in ports:
+      print(" ICN SWITCH BASE: Add port")
       self.add_port(port)
 
     if features is not None:
@@ -110,6 +119,8 @@ class SoftwareSwitchBase (object):
     else:
       # Set up default features
 
+      #Jeeva: Switch features have to be changed
+      print(" ICN SWITCH BASE: Gonna call SwitchFeatures Function")
       self.features = SwitchFeatures()
       self.features.cap_flow_stats = True
       self.features.cap_table_stats = True
@@ -137,7 +148,10 @@ class SoftwareSwitchBase (object):
     # That is, self.ofp_handlers[OFPT_FOO] = self._rx_foo
     self.ofp_handlers = {}
     for value,name in ofp_type_map.iteritems():
+      #Jeeva : New OFPT_ names have to be added for new OF messages
       name = name.split("OFPT_",1)[-1].lower()
+      #Jeeva : Functions thats start with rx_ are the functions for handling the messages
+      #Jeeva : New functions have to be created to handle ICN messages
       h = getattr(self, "_rx_" + name, None)
       if not h: continue
       assert of._message_type_to_class[value]._from_controller, name
@@ -235,6 +249,8 @@ class SoftwareSwitchBase (object):
     """
     Handle an incoming OpenFlow message
     """
+    print(" ICN SWITCH BASE , rx_message : Got a message :  ", msg.show())
+    #print(" ICN SWITCH BASE , rx_message : Got a message :  ", msg._from_controller)
     ofp_type = msg.header_type
     h = self.ofp_handlers.get(ofp_type)
     if h is None:
@@ -248,6 +264,7 @@ class SoftwareSwitchBase (object):
     """
     Set this switch's connection.
     """
+    print(" ICN SWITCH BASE : Setting connection")
     self._has_sent_hello = False
     connection.set_message_handler(self.rx_message)
     self._connection = connection
@@ -256,12 +273,14 @@ class SoftwareSwitchBase (object):
     """
     Send a message to this switch's communication partner
     """
+    print(" ICN SWITCH BASE: Send Function (Send a message to this switch's communication partner )")
     if connection is None:
       connection = self._connection
     if connection:
+      print("ICN SWITCH BASE: connection partner is connected ", message.show())
       connection.send(message)
     else:
-      self.log.debug("Asked to send message %s, but not connected", message)
+      self.log.debug("Asked to send message , but not connected")
 
   def _rx_hello (self, ofp, connection):
     #FIXME: This isn't really how hello is supposed to work -- we're supposed
@@ -289,6 +308,8 @@ class SoftwareSwitchBase (object):
                              ports = self.ports.values())
     self.send(msg)
 
+
+
   def _rx_flow_mod (self, ofp, connection):
     """
     Handles flow mods
@@ -313,6 +334,7 @@ class SoftwareSwitchBase (object):
     """
     Handles packet_outs
     """
+    print("ICN SWITCH BASE : rx packet out ")
     self.log.debug("Packet out details: %s", packet_out.show())
 
     if packet_out.data:
@@ -332,6 +354,18 @@ class SoftwareSwitchBase (object):
   def _rx_barrier_request (self, ofp, connection):
     msg = ofp_barrier_reply(xid = ofp.xid)
     self.send(msg)
+
+    # Jeeva : remove it later
+    print(" *** ICN SWITCH BASE : Trying for packet in message")
+    msg = ofp_packet_in(xid=0,data="Interest:icndemotest")
+    print(" ICN SWITCH BASE : Packet in message sent : ", msg.show())
+    self.send(msg)
+
+    #Jeeva : remove it later
+    #Jeeva : try rx_packet , 1 is the in port and controller assigns port 3 as output for this packet
+    print(" ##### ICN SWITCH BASE : Gonna call rx_packet")
+    packet =ethernet(raw="Interest:newnewnew")
+    self.rx_packet(packet, 1)
 
   def _rx_get_config_request (self, ofp, connection):
     msg = ofp_get_config_reply(xid = ofp.xid)
@@ -409,17 +443,22 @@ class SoftwareSwitchBase (object):
     Send hello (once)
     """
     #FIXME: This is wrong -- we should just send when connecting.
+    print(" ICN Switch BASE: send_hello function ")
     if self._has_sent_hello and not force: return
     self._has_sent_hello = True
     self.log.debug("Sent hello")
     msg = ofp_hello(xid=0)
+    print(" ICN SWITCH BASE : send_hello -> hello msg.show()", msg.show())
     self.send(msg)
+
 
   def send_packet_in (self, in_port, buffer_id=None, packet=b'', reason=None,
                       data_length=None):
     """
     Send PacketIn
     """
+    print(" ICN Switch BASE: send_packet_in function ")
+    #Jeeva : packet.pack(), This function has to be changed to pack the ICN packet
     if hasattr(packet, 'pack'):
       packet = packet.pack()
     assert assert_type("packet", packet, bytes)
@@ -442,6 +481,7 @@ class SoftwareSwitchBase (object):
     port is an ofp_phy_port
     reason is one of OFPPR_xxx
     """
+    print(" ICN SWITCH BASE : Send_port_status , Send port status")
     assert assert_type("port", port, ofp_phy_port, none_ok=False)
     assert reason in ofp_port_reason_rev_map.values()
     msg = ofp_port_status(desc=port, reason=reason)
@@ -473,51 +513,27 @@ class SoftwareSwitchBase (object):
     in_port: the integer port number
     packet_data: packed version of packet if available
     """
+    print(" ICN Switch BASE: rx_packet (process a dataplane packet) ")
     assert assert_type("packet", packet, ethernet, none_ok=False)
     assert assert_type("in_port", in_port, int, none_ok=False)
+    #print(" ICN Switch BASE: Ports list ", self.ports)
     port = self.ports.get(in_port)
     if port is None:
       self.log.warn("Got packet on missing port %i", in_port)
       return
 
-    is_stp = packet.dst == _STP_MAC
-
-    if (port.config & OFPPC_NO_RECV) and not is_stp:
-      # Drop all except STP
-      return
-    if (port.config & OFPPC_NO_RECV_STP) and is_stp:
-      # Drop STP
-      return
-
-    if self.config_flags & OFPC_FRAG_MASK:
-      ipp = packet.find(ipv4)
-      if ipp:
-        if (ipp.flags & ipv4.MF_FLAG) or ipp.frag != 0:
-          frag_mode = self.config_flags & OFPC_FRAG_MASK
-          if frag_mode == OFPC_FRAG_DROP:
-            # Drop fragment
-            return
-          elif frag_mode == OFPC_FRAG_REASM:
-            if self.features.cap_ip_reasm:
-              #TODO: Implement fragment reassembly
-              self.log.info("Can't reassemble fragment: not implemented")
-          else:
-            self.log.warn("Illegal fragment processing mode: %i", frag_mode)
-
-    self.port_stats[in_port].rx_packets += 1
-    if packet_data is not None:
-      self.port_stats[in_port].rx_bytes += len(packet_data)
-    else:
-      self.port_stats[in_port].rx_bytes += len(packet.pack()) # Expensive
-
     self._lookup_count += 1
     entry = self.table.entry_for_packet(packet, in_port)
+    print( " ICN SWITCH BASE , rx_packet , entry : ", entry)
     if entry is not None:
+      print(" ICN SWITCH BASE : Matching Entry Found")
       self._matched_count += 1
       entry.touch_packet(len(packet))
+      print(" ICN SWITCH BASE : Gonna process the packet")
       self._process_actions_for_packet(entry.actions, packet, in_port)
     else:
       # no matching entry
+      print(" ICN SWITCH BASE : No Matching Entry")
       if port.config & OFPPC_NO_PACKET_IN:
         return
       buffer_id = self._buffer_packet(packet, in_port)
@@ -631,6 +647,7 @@ class SoftwareSwitchBase (object):
     out_port, in_port: the integer port number
     max_len: maximum packet payload length to send to controller
     """
+    print(" ICN Switch BASE : _output_packet : send a packet out some port ")
     assert assert_type("packet", packet, ethernet, none_ok=False)
 
     def real_send (port_no, allow_in_port=False):
@@ -678,6 +695,7 @@ class SoftwareSwitchBase (object):
       # Do we disable send-to-controller when performing this?
       # (Currently, there's the possibility that a table miss from this
       # will result in a send-to-controller which may send back to table...)
+      print("OFPP_TABLE : ", OFPP_TABLE , "Sending to rx_packet function")
       self.rx_packet(packet, in_port)
     else:
       self.log.warn("Unsupported virtual output port: %d", out_port)
@@ -735,6 +753,7 @@ class SoftwareSwitchBase (object):
       #if action.type is ofp_action_resubmit:
       #  self.rx_packet(packet, in_port)
       #  return
+      # Jeeva : So new action handlers have to be added for new actions
       h = self.action_handlers.get(action.type)
       if h is None:
         self.log.warn("Unknown action type: %x " % (action.type,))
@@ -746,6 +765,7 @@ class SoftwareSwitchBase (object):
     """
     Process an OFPFC_ADD flow mod sent to the switch.
     """
+    print(" ICN Switch BASE: _flow_mod_add (Process an OFPFC_ADD flow mod sent to the switch.)")
     match = flow_mod.match
     priority = flow_mod.priority
 
@@ -838,7 +858,7 @@ class SoftwareSwitchBase (object):
     Process an OFPFC_DELETE_STRICT flow mod sent to the switch.
     """
     self._flow_mod_delete(flow_mod, connection, table, strict=True)
-
+  #Jeeva : These are the different action functions
   def _action_output (self, action, packet, in_port):
     self._output_packet(packet, action.port, in_port, action.max_len)
     return packet
@@ -1026,8 +1046,8 @@ class SoftwareSwitchBase (object):
                                           dpid_to_str(self.dpid),
                                           len(self.ports))
 
-
-class SoftwareSwitch (SoftwareSwitchBase, EventMixin):
+#Jeeva : Replace ICNSwitchBase with SoftwareSwitchBase
+class SoftwareSwitch (ICNSwitchBase, EventMixin):
   _eventMixin_events = set([DpPacketOut])
 
   def _output_packet_physical (self, packet, port_no):
@@ -1036,8 +1056,21 @@ class SoftwareSwitch (SoftwareSwitchBase, EventMixin):
 
     This is called by the more general _output_packet().
     """
+    print(" Software switch : _output_packet_physical : send a packet out a single physical port")
     self.raiseEvent(DpPacketOut(self, packet, self.ports[port_no]))
 
+
+class ICNSwitch (ICNSwitchBase, EventMixin):
+  _eventMixin_events = set([DpPacketOut])
+
+  def _output_packet_physical (self, packet, port_no):
+    """
+    send a packet out a single physical port
+
+    This is called by the more general _output_packet().
+    """
+    print(" Software switch : _output_packet_physical : send a packet out a single physical port")
+    self.raiseEvent(DpPacketOut(self, packet, self.ports[port_no]))
 
 class ExpireMixin (object):
   """
@@ -1088,10 +1121,14 @@ class OFConnection (object):
     self.log.info("%s %s", str(self), str(m))
 
   def __init__ (self, io_worker):
+    print(" OFConnection : init method , io_worker :", io_worker)
     self.starting = True # No data yet
     self.io_worker = io_worker
     self.io_worker.rx_handler = self.read
+    #Jeeva : controller is got from ioworker.socket.getpeername()
     self.controller_id = io_worker.socket.getpeername()
+    #print(" OF Connection : dir(socket)", dir(io_worker.socket))
+    print(" OF Connection : controller id io_worker.socket.getpeername() : ", io_worker.socket.getpeername())
     OFConnection.ID += 1
     self.ID = OFConnection.ID
     self.log = logging.getLogger("ControllerConnection(id=%d)" % (self.ID,))
@@ -1100,6 +1137,7 @@ class OFConnection (object):
     self.on_message_received = None
 
   def set_message_handler (self, handler):
+    print(" OFConnection : set_message_handler : ", handler)
     self.on_message_received = handler
 
   def send (self, data):
@@ -1111,6 +1149,7 @@ class OFConnection (object):
     way, you can just pass one of the OpenFlow objects from the OpenFlow
     library to it and get the expected result, for example.
     """
+    print(" OFConnection : send , send raw data to controller")
     if type(data) is not bytes:
       if hasattr(data, 'pack'):
         data = data.pack()
@@ -1263,6 +1302,7 @@ class SwitchFeatures (object):
   and ".cap_foo" for all OFPC_FOO (as gathered from libopenflow).
   """
   def __init__ (self, **kw):
+    print(" Switch Features : init function")
     self._cap_info = {}
     for val,name in ofp_capabilities_map.iteritems():
       name = name[5:].lower() # strip OFPC_

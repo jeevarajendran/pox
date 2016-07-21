@@ -34,6 +34,7 @@ class Tutorial (object):
   A Connection object for that switch is passed to the __init__ function.
   """
   def __init__ (self, connection):
+    log.debug("OF_TUTORIAL : Tutorial is initialized with connection")
     # Keep track of the connection to the switch so that we can
     # send it messages!
     self.connection = connection
@@ -44,6 +45,7 @@ class Tutorial (object):
     # Use this table to keep track of which ethernet address is on
     # which switch port (keys are MACs, values are ports).
     self.mac_to_port = {}
+    self.name_table = {'demotest1':8888,'demotest2':9999,'icndemotest':2, 'newnewnew':3}
 
 
   def resend_packet (self, packet_in, out_port):
@@ -59,9 +61,11 @@ class Tutorial (object):
     action = of.ofp_action_output(port = out_port)
     msg.actions.append(action)
 
+    log.debug("OF_TUTORIAL : Message being sent on the connection : %s " % msg)
     # Send message to switch
     self.connection.send(msg)
-
+    log.debug("OF_TUTORIAL : Message sent to the switch")
+    log.debug("OF_TUTORIAL : --------------------------")
 
   def act_like_hub (self, packet, packet_in):
     """
@@ -72,6 +76,7 @@ class Tutorial (object):
     # We want to output to all ports -- we do that using the special
     # OFPP_ALL port as the output port.  (We could have also used
     # OFPP_FLOOD.)
+    log.debug("OF_TUTORIAL : In Act like Hub Function , Resending the packet")
     self.resend_packet(packet_in, of.OFPP_ALL)
 
     # Note that if we didn't get a valid buffer_id, a slightly better
@@ -117,25 +122,60 @@ class Tutorial (object):
       # This part looks familiar, right?
       self.resend_packet(packet_in, of.OFPP_ALL)
 
-    """ # DELETE THIS LINE TO START WORKING ON THIS #
+    """
+    # DELETE THIS LINE TO START WORKING ON THIS #
+    log.debug("OF_TUTORIAL : ACT LIKE SWITCH function")
+    #Jeeva : event.data or packet.raw will give the data payload
+    interest = packet.raw
+    name = interest.split(":")[1]
+    print("Interest name : ", name)
+    # self.name_table[name]='7777'
+    print("Name Dictionary :", self.name_table)
+    port = self.name_table[name]
+    print("Port to send :", port)
+    self.resend_packet(packet_in, port)
 
+    '''
+    self.mac_to_port[packet.src] = packet_in.in_port
+    if packet.dst in self.mac_to_port:
+      print("Packet sent to Control Plane")
+      # Send the packet to the destination
+      self.resend_packet(packet_in,self.mac_to_port[packet.dst])
+      # Install a flow
+      msg = of.ofp_flow_mod()
+      msg.match.dl_dst = packet.dst
+      msg.actions.append(of.ofp_action_output(port=self.mac_to_port[packet.dst]))
+      self.connection.send(msg)
+      print("Sent message to Switch")
+    else:
+      print("Send to ALL ports")
+      self.resend_packet(packet_in, of.OFPP_ALL)
+    '''
 
   def _handle_PacketIn (self, event):
     """
     Handles packet in messages from the switch.
     """
-
+    log.debug("OF_TUTORIAL : Got a PacketIn Event from : %s" % event.source)
     packet = event.parsed # This is the parsed packet data.
     if not packet.parsed:
       log.warning("Ignoring incomplete packet")
       return
 
     packet_in = event.ofp # The actual ofp_packet_in message.
+    print("OF_TUTORIAL : Packet In Message : " , event.data)
+    print("OF_TUTORIAL : Packet In Message : ", packet.msg)
+    print("OF_TUTORIAL : Packet In Message : ", packet.payload)
+    print("OF_TUTORIAL : Packet In Message : ", packet.raw)
+    print("OF_TUTORIAL : Packet In Message : ", packet.src)
+    print("OF_TUTORIAL : Packet In Message : ", packet.dst)
+    print("OF_TUTORIAL : Packet In Message : ", packet.type)
 
     # Comment out the following line and uncomment the one after
     # when starting the exercise.
-    self.act_like_hub(packet, packet_in)
-    #self.act_like_switch(packet, packet_in)
+    log.debug("OF_TUTORIAL : Calling act like Switch function")
+    #self.act_like_hub(packet, packet_in)
+    self.act_like_switch(packet, packet_in)
 
 
 
@@ -143,7 +183,10 @@ def launch ():
   """
   Starts the component
   """
+  log.debug("OF_TUTORIAL : Launch Test 2")
   def start_switch (event):
     log.debug("Controlling %s" % (event.connection,))
+    log.debug("OF_TUTORIAL : event details : %s" % (event.source))
     Tutorial(event.connection)
+
   core.openflow.addListenerByName("ConnectionUp", start_switch)
