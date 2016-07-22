@@ -344,16 +344,14 @@ class NameTable (EventMixin):
     self.add_entry(entry)
 
     print(" NAME TABLE, self._table :", self._table )
-    for entry in self._table:
-      print(" NAME TABLE, match in self.table :", entry.match)
+    #for entry in self._table:
+    # print(" NAME TABLE, match in self.table :", entry.match)
 
     #Jeeva : Add these lines later
-    '''
     for entry in self._table:
       if entry.match.matches_with_wildcards(packet_match,
                                             consider_other_wildcards=False):
         return entry
-    '''
     return entry #Jeeva : Should return an entry
 
   def check_for_overlapping_entry (self, in_entry):

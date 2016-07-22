@@ -1415,6 +1415,17 @@ class ofp_match (ofp_base):
 
     Important for non-strict modify flow_mods etc.
     """
+
+    print(" NAME LIB OF 01 : matches_with_wildcards ")
+    if self == other:
+      print(" NAME LIB OF 01 : matches are same")
+      return True
+
+    print(" self.interest_name : ", self.interest_name)
+    print(" other.interest_name : ", other.interest_name)
+    if self.interest_name == other.interest_name:
+      return True
+
     '''
     assert assert_type("other", other, ofp_match, none_ok=False)
 
