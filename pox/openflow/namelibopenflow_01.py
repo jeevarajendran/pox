@@ -86,6 +86,7 @@ generate_xid = xid_generator()
 # Packing / Unpacking
 # ----------------------------------------------------------------------
 
+#Jeeva : 'b' denotes binary
 _PAD = b'\x00'
 _PAD2 = _PAD*2
 _PAD3 = _PAD*3
@@ -135,6 +136,8 @@ def _readip (data, offset, networkOrder = True):
   (offset, d) = _read(data, offset, 4)
   return (offset, IPAddr(d, networkOrder = networkOrder))
 
+#Jeeva : Is it possible to write a method to read the interest like how EthAddr and IPAddr are being used
+
 # ----------------------------------------------------------------------
 
 
@@ -149,7 +152,7 @@ TABLE_ALL = 0xff
 TABLE_EMERGENCY = 0xfe
 
 
-class _ofp_name_meta (type):
+class _ofp_meta (type):
   """
   Metaclass for ofp messages/structures
 
@@ -162,7 +165,7 @@ class _ofp_name_meta (type):
       return cls._MIN_LENGTH
 
 
-class ofp_name_base (object):
+class ofp_base (object):
   """
   Base class for OpenFlow messages/structures
 
@@ -171,7 +174,7 @@ class ofp_name_base (object):
   implement a __len__ instance method and set a class level _MIN_LENGTH
   attribute to your minimum length.
   """
-  __metaclass__ = _ofp_name_meta
+  __metaclass__ = _ofp_meta
 
   def _assert (self):
     r = self._validate()
@@ -207,8 +210,9 @@ _message_type_to_class = {}
 _message_class_to_types = {} # Do we need this?
 #_message_type_to_name = {}
 #_message_name_to_type = {}
-ofp_type_rev_map = {}
 ofp_type_map = {}
+ofp_type_rev_map = {}
+
 
 def openflow_message (ofp_type, type_val, reply_to=None,
     request_for=None, switch=False, controller=False):
@@ -216,6 +220,11 @@ def openflow_message (ofp_type, type_val, reply_to=None,
 
   #_message_name_to_type[ofp_type] = type_val
   #_message_type_to_name[type_val] = ofp_type
+  print(" ++ Setting openflow_message ")
+  print(" ++ Setting openflow_message : ofp_type", ofp_type)
+  print(" ++ Setting openflow_message : type_value ", type_val)
+  print(" ++ Setting openflow_message : Switch message ? :", switch)
+  print(" ++ Setting openflow_message : Controller message  ? : ", controller)
   ofp_type_rev_map[ofp_type] = type_val
   ofp_type_map[type_val] = ofp_type
   def f (c):
@@ -228,12 +237,15 @@ def openflow_message (ofp_type, type_val, reply_to=None,
   return f
 
 def openflow_sc_message (*args, **kw):
+  print(" ++ Setting openflow_message : Switch and Controller")
   return openflow_message(switch=True, controller=True, *args, **kw)
 
 def openflow_c_message (*args, **kw):
+  print(" ++ Setting openflow_message  : Controller")
   return openflow_message(controller=True, *args, **kw)
 
 def openflow_s_message (*args, **kw):
+  print(" ++ Setting openflow_message : Switch ")
   return openflow_message(switch=True, *args, **kw)
 
 _queue_prop_type_to_class = {}
@@ -257,6 +269,7 @@ ofp_action_type_rev_map = {}
 ofp_action_type_map = {}
 
 def openflow_action (action_type, type_val):
+  print(" ++ Setting openflow_action")
   ofp_action_type_rev_map[action_type] = type_val
   ofp_action_type_map[type_val] = action_type
   def f (c):
@@ -538,7 +551,7 @@ NO_BUFFER = 4294967295
 # ----------------------------------------------------------------------
 
 #1. Openflow Header
-class ofp_header (ofp_name_base):
+class ofp_header (ofp_base):
   _MIN_LENGTH = 8
   def __init__ (self, **kw):
     self.version = OFP_VERSION
@@ -604,7 +617,7 @@ class ofp_header (ofp_name_base):
     return self.__class__.__name__ + "\n  " + self.show('  ').strip()
 
 
-class ofp_stats_body_base (ofp_name_base):
+class ofp_stats_body_base (ofp_base):
   """
   Base class for stats bodies
   """
@@ -620,7 +633,7 @@ class ofp_stats_body_base (ofp_name_base):
   """
 
 
-class ofp_action_base (ofp_name_base):
+class ofp_action_base (ofp_base):
   """
   Base class for actions
 
@@ -643,7 +656,7 @@ class ofp_action_base (ofp_name_base):
     return (r, o)
 
 
-class ofp_queue_prop_base (ofp_name_base):
+class ofp_queue_prop_base (ofp_base):
   """
   Base class for queue properties
 
@@ -656,7 +669,7 @@ class ofp_queue_prop_base (ofp_name_base):
 
 #2. Common Structures
 ##2.1 Port Structures
-class ofp_phy_port (ofp_name_base):
+class ofp_phy_port (ofp_base):
   def __init__ (self, **kw):
     self.port_no = 0
     self.hw_addr = EMPTY_ETH
@@ -775,7 +788,7 @@ class ofp_phy_port (ofp_name_base):
 
 
 ##2.2 Queue Structures
-class ofp_packet_queue (ofp_name_base):
+class ofp_packet_queue (ofp_base):
   _MIN_LENGTH = 8
   def __init__ (self, **kw):
     self.queue_id = 0
@@ -874,7 +887,7 @@ class ofp_queue_prop_none (ofp_queue_prop_generic):
 
 
 @openflow_queue_prop('OFPQT_MIN_RATE', 1)
-class ofp_queue_prop_min_rate (ofp_name_base):
+class ofp_queue_prop_min_rate (ofp_base):
   def __init__ (self, **kw):
     self.rate = 0
 
@@ -918,7 +931,7 @@ class ofp_queue_prop_min_rate (ofp_name_base):
 
 
 ##2.3 Flow Match Structures
-class ofp_match (ofp_name_base):
+class ofp_match (ofp_base):
   adjust_wildcards = True # Set to true to "fix" outgoing wildcards
 
   @classmethod
@@ -932,19 +945,26 @@ class ofp_match (ofp_name_base):
     @param packet  A pox.packet.ethernet instance or a packet_in
     @param spec_frags Handle IP fragments as specified in the spec.
     """
+    print(" NAME OF LIB : Construct an exact match for the given packet")
     if isinstance(packet, ofp_packet_in):
       in_port = packet.in_port
       packet = ethernet(packet.data)
     else : #Jeeva
-      print(" NAME OF LIB : Not Packet in, Just an ethernet packet")
+      print(" NAME OF LIB : Not Packet_in, Just an ethernet packet")
     assert assert_type("packet", packet, ethernet, none_ok=False)
 
+    print(" +*+*+*+*+*+*+*+**+ NAME oF LIB : packet data :", packet.raw)
+    raw_packet = packet.raw
+    interest=raw_packet.split(":")[0]
     match = cls()
-
-    if in_port is not None:
-      match.in_port = in_port
+    print(" +*+*+*+*+*+*+*+**+ NAME oF LIB : Match class :", match.show())
+    if interest is not None:
+      print(" +*+*+*+*+*+*+*+**+ NAME oF LIB : Setting the matched interest")
+      match.interest_name = interest
+      print(" +*+*+*+*+*+*+*+**+ NAME oF LIB : Done setting the matched interest")
     else: #Jeeva
-      match.in_port = 1
+      print(" +*+*+*+*+*+*+*+**+ NAME oF LIB : No matched interest : Setting to Test")
+      match.interest_name = "Test"
 
     '''
     match.dl_src = packet.src
@@ -1020,9 +1040,12 @@ class ofp_match (ofp_name_base):
     return reversed
 
   def __init__ (self, **kw):
+    print("+ * + * + * + * + * + * + * + ** + NAME OF LIB : OFP_MATCH Init ")
     self._locked = False
 
     for k,v in ofp_match_data.iteritems():
+      print("k=", k)
+      print("v[0]", v[0])
       setattr(self, '_' + k, v[0])
 
     self.wildcards = self._normalize_wildcards(OFPFW_ALL)
@@ -1115,6 +1138,10 @@ class ofp_match (ofp_name_base):
     if name == 'nw_dst' or name == 'nw_src':
       # Special handling
       getattr(self, 'set_' + name)(value)
+      return value
+
+    if name == 'interest_name':
+      print("Name is interest_name")
       return value
 
     if value is None:
@@ -4459,4 +4486,5 @@ ofp_match_data = {
   'nw_dst' : (0, OFPFW_NW_DST_ALL),
   'tp_src' : (0, OFPFW_TP_SRC),
   'tp_dst' : (0, OFPFW_TP_DST),
+  'interest_name':("","sample")
 }

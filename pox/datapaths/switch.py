@@ -14,7 +14,7 @@
 # limitations under the License.
 
 """
-A software OpenFlow switch
+An ICN OpenFlow switch
 """
 
 """
@@ -55,10 +55,10 @@ class DpPacketOut (Event):
   Event raised when a dataplane packet is sent out a port
   """
   def __init__ (self, node, packet, port):
-    print(" ICN SWITCH : In Dp Packet Out (Event raised when a dataplane packet is sent out a port)")
-    print ("   Node: ", node)
-    print("   packet: ", packet)
-    print("  port: ", port)
+    print(" DpPacketOut class : (Event raised when a dataplane packet is sent out a port)")
+    print (" Node: ", node)
+    print(" packet: ", packet)
+    print(" port: ", port)
     #In oredr succeed assert the packet type has to be checked . assert_type in lib/util.py , or comment
     #out the alert
     assert assert_type("packet", packet, ethernet, none_ok=False)
@@ -355,14 +355,21 @@ class ICNSwitchBase (object):
     msg = ofp_barrier_reply(xid = ofp.xid)
     self.send(msg)
 
-    # Jeeva : remove it later
+    #Jeeva : remove it later
+    #Jeeva : Sending a packet_in packet to controller with interest name
+    #Jeeva : Controller replies with output port as 3
     print(" *** ICN SWITCH BASE : Trying for packet in message")
     msg = ofp_packet_in(xid=0,data="Interest:icndemotest")
     print(" ICN SWITCH BASE : Packet in message sent : ", msg.show())
     self.send(msg)
 
     #Jeeva : remove it later
-    #Jeeva : try rx_packet , 1 is the in port and controller assigns port 3 as output for this packet
+    #Jeeva : trying rx_packet method
+    #Jeeva : rx_packet will process any dataplane packet
+    #Jeeva : Creating an ethernet packet with interest name in the raw data and sending over to rx_packet
+    #Jeeva : rx_packet will try to find out a match from the name table / flow table for the packet
+    #Jeeva : If no match is found, rx_packet will send the packet to the controller as packet_in
+    #Jeeva : 1 is the in port and controller assigns port 4 as output for this packet
     print(" ##### ICN SWITCH BASE : Gonna call rx_packet")
     packet =ethernet(raw="Interest:newnewnew")
     self.rx_packet(packet, 1)
@@ -512,6 +519,14 @@ class ICNSwitchBase (object):
     packet: an instance of ethernet
     in_port: the integer port number
     packet_data: packed version of packet if available
+
+    Jeeva:
+      Get the ethernet packet , check for matching entry in name table .If no matching entry found ,
+      send to controller as packet_in message
+
+      To check for match :
+        Call self.table.entry_for_packet (passing the packet and in_port)
+
     """
     print(" ICN Switch BASE: rx_packet (process a dataplane packet) ")
     assert assert_type("packet", packet, ethernet, none_ok=False)
@@ -648,10 +663,15 @@ class ICNSwitchBase (object):
     max_len: maximum packet payload length to send to controller
     """
     print(" ICN Switch BASE : _output_packet : send a packet out some port ")
+    print(" ICN Switch BASE : _output_packet : packet : ", packet)
+    print(" ICN Switch BASE : _output_packet : out_port : ", out_port)
+    print(" ICN Switch BASE : _output_packet : in_port : ", in_port)
     assert assert_type("packet", packet, ethernet, none_ok=False)
 
     def real_send (port_no, allow_in_port=False):
+      print(" ICN Switch BASE : real_send " )
       if type(port_no) == ofp_phy_port:
+        print(" ICN Switch BASE : real_send : port_no == ofp_phy_port type")
         port_no = port_no.port_no
       if port_no == in_port and not allow_in_port:
         self.log.warn("Dropping packet sent on port %i: Input port", port_no)
@@ -669,33 +689,42 @@ class ICNSwitchBase (object):
       if self.ports[port_no].state & OFPPS_LINK_DOWN:
         self.log.debug("Dropping packet sent on port %i: Link down", port_no)
         return
+      print(" ICN Switch BASE : real_send : Didnt drop the packet")
       self.port_stats[port_no].tx_packets += 1
       self.port_stats[port_no].tx_bytes += len(packet.pack()) #FIXME: Expensive
+      print(" ICN Switch BASE : real_send : Gonna call _output_packet_physical with port_no : ", port_no)
       self._output_packet_physical(packet, port_no)
 
+    print(" ICN Switch BASE : Skipped real_send for now" )
     if out_port < OFPP_MAX:
+      print(" ICN Switch BASE : out_port < OFPP_MAX : Gonna call real_send")
       real_send(out_port)
     elif out_port == OFPP_IN_PORT:
+      print(" ICN Switch BASE : out_port == OFPP_IN_PORT : Gonna call real_send")
       real_send(in_port, allow_in_port=True)
     elif out_port == OFPP_FLOOD:
+      print(" ICN Switch BASE : out_port == OFPP_FLOOD : Gonna call real_send")
       for no,port in self.ports.iteritems():
         if no == in_port: continue
         if port.config & OFPPC_NO_FLOOD: continue
         real_send(port)
     elif out_port == OFPP_ALL:
+      print(" ICN Switch BASE : out_port == OFPP_ALL : Gonna call real_send")
       for no,port in self.ports.iteritems():
         if no == in_port: continue
         real_send(port)
     elif out_port == OFPP_CONTROLLER:
+      print(" ICN Switch BASE : out_port == OFPP_CONTROLLER : Gonna call send_packet_in")
       buffer_id = self._buffer_packet(packet, in_port)
       # Should we honor OFPPC_NO_PACKET_IN here?
       self.send_packet_in(in_port, buffer_id, packet, reason=OFPR_ACTION,
                           data_length=max_len)
     elif out_port == OFPP_TABLE:
+      print(" ICN Switch BASE : out_port == OFPP_TABLE : Gonna call rx_packet")
       # Do we disable send-to-controller when performing this?
       # (Currently, there's the possibility that a table miss from this
       # will result in a send-to-controller which may send back to table...)
-      print("OFPP_TABLE : ", OFPP_TABLE , "Sending to rx_packet function")
+      #print("OFPP_TABLE : ", OFPP_TABLE , "Sending to rx_packet function")
       self.rx_packet(packet, in_port)
     else:
       self.log.warn("Unsupported virtual output port: %d", out_port)
@@ -745,16 +774,21 @@ class ICNSwitchBase (object):
     ofp is the message which triggered this processing, if any (used for error
     generation)
     """
+    print(" ICN SWITCH BASE : In _process_actions_for_packet")
+    print(" ICN SWITCH BASE : In _process_actions_for_packet : actions :", actions)
     assert assert_type("packet", packet, (ethernet, bytes), none_ok=False)
     if not isinstance(packet, ethernet):
       packet = ethernet.unpack(packet)
 
+    print(" ICN SWITCH BASE : In _process_actions_for_packet : Ensured packet is an ethernet packet")
     for action in actions:
       #if action.type is ofp_action_resubmit:
       #  self.rx_packet(packet, in_port)
       #  return
       # Jeeva : So new action handlers have to be added for new actions
+      print(" ICN SWITCH BASE : In _process_actions_for_packet : Inside actions for loop")
       h = self.action_handlers.get(action.type)
+      print(" ICN SWITCH BASE : In _process_actions_for_packet : action handler :", h)
       if h is None:
         self.log.warn("Unknown action type: %x " % (action.type,))
         self.send_error(type=OFPET_BAD_ACTION, code=OFPBAC_BAD_TYPE, ofp=ofp)
@@ -858,8 +892,10 @@ class ICNSwitchBase (object):
     Process an OFPFC_DELETE_STRICT flow mod sent to the switch.
     """
     self._flow_mod_delete(flow_mod, connection, table, strict=True)
+
   #Jeeva : These are the different action functions
   def _action_output (self, action, packet, in_port):
+    print(" ICN SWITCH BASE : _action_output ")
     self._output_packet(packet, action.port, in_port, action.max_len)
     return packet
   def _action_set_vlan_vid (self, action, packet, in_port):
@@ -1069,7 +1105,7 @@ class ICNSwitch (ICNSwitchBase, EventMixin):
 
     This is called by the more general _output_packet().
     """
-    print(" Software switch : _output_packet_physical : send a packet out a single physical port")
+    print(" ICN Switch : _output_packet_physical : send a packet out a single physical port")
     self.raiseEvent(DpPacketOut(self, packet, self.ports[port_no]))
 
 class ExpireMixin (object):

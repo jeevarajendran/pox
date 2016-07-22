@@ -54,10 +54,17 @@ import threading
 
 import pox.core
 core = pox.core.initialize()
+print("BOOT : Core is initialized")
 
 import pox.openflow
+
+print("BOOT : Checkpoint after import pox.openflow")
 import pox.openflow.of_01
+
+print("BOOT : Checkpoint after pox.openflow.of_01")
 from pox.lib.util import str_to_bool
+
+print("BOOT : Checkpoint")
 
 # Function to run on main thread
 _main_thread_function = None
@@ -480,6 +487,7 @@ def boot (argv = None):
   """
 
   # Add pox directory to path
+  print (" IN BOOT")
   base = sys.path[0]
   sys.path.insert(0, os.path.abspath(os.path.join(base, 'pox')))
   sys.path.insert(0, os.path.abspath(os.path.join(base, 'ext')))

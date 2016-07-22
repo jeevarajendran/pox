@@ -221,8 +221,8 @@ class EventMixin (object):
     if not hasattr(self, "_eventMixin_handlers"):
       print(" No eventMixin handlers \n")
       setattr(self, "_eventMixin_handlers", {})
-    print(" Jeeva controller _eventMixin_init , self._eventMixin_handlers : ", self._eventMixin_handlers, "\n")
-    print(" Jeeva controller _eventMixin_init , self._eventMixin_events : ", self._eventMixin_events , "\n")
+    print(" EventMixin : _eventMixin_init : self._eventMixin_handlers : ", self._eventMixin_handlers, "\n")
+    print(" EventMixin : _eventMixin_init : self._eventMixin_events : ", self._eventMixin_events , "\n")
 
   def raiseEventNoErrors (self, event, *args, **kw):
     """
@@ -233,10 +233,10 @@ class EventMixin (object):
     #TODO: this should really keep subsequent events executing and print
     #      the specific handler that failed...
     try:
-      print(" Jeeva controller revent : Gonna Raise the event in revent ", event, "\n")
+      print(" EventMixin : raiseEventNoErrors : Gonna Raise the event in revent ", event, "\n")
       return self.raiseEvent(event, *args, **kw)
     except:
-      print(" Jeeva controller revent : Exception in event raising \n")
+      print(" EventMixin : raiseEventNoErrors : Exception in event raising \n")
       if handleEventException is not None:
         import sys
         handleEventException(self, event, args, kw, sys.exc_info())
@@ -250,7 +250,7 @@ class EventMixin (object):
     Returns the event object, unless it was never created (because there
     were no listeners) in which case returns None.
     """
-    print(" Jeeva controller : Raise event : ", dir(event), "\n\n")
+    print(" EventMixin : rasieEvent : event : ", event, "\n\n")
     self._eventMixin_init()
     #print("check 1 ")
     classCall = False
@@ -263,9 +263,9 @@ class EventMixin (object):
     elif issubclass(event, Event):
       #print("check 4 ")
       # Check for early-out
-      print(" Jeeva controller raiseEvent , self._eventMixin_handlers : ", self._eventMixin_handlers, "\n")
+      print(" EventMixin : rasieEvent : self._eventMixin_handlers : ", self._eventMixin_handlers, "\n")
       if event not in self._eventMixin_handlers:
-        print("return none \n")
+        print("EventMixin : rasieEvent : return none \n")
         return None
       if len(self._eventMixin_handlers[event]) == 0:
         return None
@@ -280,17 +280,17 @@ class EventMixin (object):
     #print("raise",event,eventType)
     if (self._eventMixin_events is not True
         and eventType not in self._eventMixin_events):
-      print("Runtime error")
+      print("EventMixin : rasieEvent : Runtime error **********")
       raise RuntimeError("Event %s not defined on object of type %s"
                          % (eventType, type(self)))
 
     # Create a copy so that it can be modified freely during event
     # processing.  It might make sense to change this.
     handlers = self._eventMixin_handlers.get(eventType, [])
-    print(" Jeeva controller : raiseEvent,  Handlers : ", handlers, "\n")
+    print(" EventMixin : rasieEvent :  Handlers : ", handlers, "\n")
     for (priority, handler, once, eid) in handlers:
       if classCall:
-        print(" Jeeva controller : Found handler Gonna invoke it :", handler, "\n")
+        print(" EventMixin : rasieEvent : Found handler : Gonna invoke it :", handler, "\n")
         rv = event._invoke(handler, *args, **kw)
       else:
         rv = handler(event, *args, **kw)
@@ -388,7 +388,7 @@ class EventMixin (object):
 
     Also see addListener().
     """
-    print(" Jeeva controller : addListenerByName \n\n")
+    print(" EventMixin : addListenerByName \n\n")
     kw['byName'] = True
     return self.addListener(*args,**kw)
 
@@ -420,7 +420,7 @@ class EventMixin (object):
 
     The return value can be used for removing the listener.
     """
-    print(" Jeeva controller : addListener \n\n")
+    print(" EventMixin : addListener \n\n")
     self._eventMixin_init()
     if (self._eventMixin_events is not True
         and eventType not in self._eventMixin_events):

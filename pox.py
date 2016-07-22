@@ -42,4 +42,5 @@ exec python $OPT "$0" $FLG "$@"
 from pox.boot import boot
 
 if __name__ == '__main__':
+  print(" ---------------------- MAIN ------------------------ ")
   boot()

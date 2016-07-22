@@ -39,6 +39,7 @@ from pox.lib.util import initHelper
 from pox.lib.util import hexdump
 from pox.lib.util import is_listlike
 
+print ("LIB OF 01 : After all imports")
 
 EMPTY_ETH = EthAddr(None)
 
@@ -59,6 +60,8 @@ def _log (debug=None, info=None, warn=None, error=None):
 # ----------------------------------------------------------------------
 # XID Management
 # ----------------------------------------------------------------------
+
+print ("LIB OF 01 : XID Management")
 
 MAX_XID = 0x7fFFffFF
 
@@ -81,6 +84,7 @@ generate_xid = xid_generator()
 
 # ----------------------------------------------------------------------
 
+print ("LIB OF 01 : Packing /Unpacking")
 
 # ----------------------------------------------------------------------
 # Packing / Unpacking
@@ -149,6 +153,8 @@ TABLE_ALL = 0xff
 TABLE_EMERGENCY = 0xfe
 
 
+print ("LIB OF 01 : ofp meta class def")
+
 class _ofp_meta (type):
   """
   Metaclass for ofp messages/structures
@@ -160,6 +166,9 @@ class _ofp_meta (type):
       return cls.__len__()
     except:
       return cls._MIN_LENGTH
+
+
+print ("LIB OF 01 : ofp_base class def")
 
 
 class ofp_base (object):
@@ -193,11 +202,14 @@ class ofp_base (object):
 
     Returns newoffset,object
     """
+    print(" LIB OF 01 : unpacking :", cls)
+    print(" LIB OF 01 : unpacking raw :", raw)
     o = cls()
     r,length = o.unpack(raw, offset)
     assert (r-offset) == length, o
     return (r, o)
 
+print("LIB OF 01 : Class decorators")
 
 # ----------------------------------------------------------------------
 # Class decorators
@@ -216,6 +228,11 @@ def openflow_message (ofp_type, type_val, reply_to=None,
 
   #_message_name_to_type[ofp_type] = type_val
   #_message_type_to_name[type_val] = ofp_type
+  print(" ++ Setting openflow_message ")
+  print(" ++ Setting openflow_message : ofp_type", ofp_type)
+  print(" ++ Setting openflow_message : type_value ", type_val)
+  print(" ++ Setting openflow_message : Switch message ? :", switch)
+  print(" ++ Setting openflow_message : Controller message  ? : ", controller)
   ofp_type_rev_map[ofp_type] = type_val
   ofp_type_map[type_val] = ofp_type
   def f (c):
@@ -228,12 +245,15 @@ def openflow_message (ofp_type, type_val, reply_to=None,
   return f
 
 def openflow_sc_message (*args, **kw):
+  print(" ++ Setting openflow_message : Switch and Controller")
   return openflow_message(switch=True, controller=True, *args, **kw)
 
 def openflow_c_message (*args, **kw):
+  print(" ++ Setting openflow_message : Controller")
   return openflow_message(controller=True, *args, **kw)
 
 def openflow_s_message (*args, **kw):
+  print(" ++ Setting openflow_message : Switch")
   return openflow_message(switch=True, *args, **kw)
 
 _queue_prop_type_to_class = {}
@@ -257,6 +277,7 @@ ofp_action_type_rev_map = {}
 ofp_action_type_map = {}
 
 def openflow_action (action_type, type_val):
+  print(" ++ Setting openflow_action")
   ofp_action_type_rev_map[action_type] = type_val
   ofp_action_type_map[type_val] = action_type
   def f (c):
@@ -334,6 +355,7 @@ def openflow_stats_reply (stats_type, type_val=None, is_list=None,
 
 # ----------------------------------------------------------------------
 
+print ("LIB OF 01 : constants")
 
 # ----------------------------------------------------------------------
 # Constants, etc.
@@ -537,6 +559,9 @@ NO_BUFFER = 4294967295
 # Structure definitions
 # ----------------------------------------------------------------------
 
+
+print ("LIB OF 01 : Openflow Headers")
+
 #1. Openflow Header
 class ofp_header (ofp_base):
   _MIN_LENGTH = 8
@@ -637,6 +662,8 @@ class ofp_action_base (ofp_base):
 
     Returns newoffset,object
     """
+    print(" LIB OF 01 : unpacking :", cls)
+    print(" LIB OF 01 : unpacking raw :", raw)
     o = cls()
     r = o.unpack(raw, offset)
     assert (r-offset) == len(o), o
@@ -653,6 +680,8 @@ class ofp_queue_prop_base (ofp_base):
   """
   property = None
 
+
+print ("LIB OF 01 : Common structures")
 
 #2. Common Structures
 ##2.1 Port Structures
@@ -867,11 +896,13 @@ class ofp_queue_prop_generic (ofp_queue_prop_base):
     outstr += prefix + 'len: ' + str(len(self)) + '\n'
     return outstr
 
+print ("LIB OF 01 : Gonna add 1st Queue Prop")
 
 @openflow_queue_prop('OFPQT_NONE', 0)
 class ofp_queue_prop_none (ofp_queue_prop_generic):
   pass
 
+print ("LIB OF 01 : Gonna add 2nd Queue Prop")
 
 @openflow_queue_prop('OFPQT_MIN_RATE', 1)
 class ofp_queue_prop_min_rate (ofp_base):
@@ -1541,10 +1572,12 @@ class ofp_action_generic (ofp_action_base):
     outstr += prefix + 'len: ' + str(len(self)) + '\n'
     return outstr
 
+print ("LIB OF 01 : Gonna add 1st action")
 
 @openflow_action('OFPAT_OUTPUT', 0)
 class ofp_action_output (ofp_action_base):
   def __init__ (self, **kw):
+    print("LIB OF 01 : ofp_action_output : init")
     self.port = None # Purposely bad -- require specification
     self.max_len = 0xffFF
 
@@ -1588,6 +1621,7 @@ class ofp_action_output (ofp_action_base):
     outstr += prefix + 'max_len: ' + str(self.max_len) + '\n'
     return outstr
 
+print ("LIB OF 01 : Gonna add 2nd action")
 
 @openflow_action('OFPAT_ENQUEUE', 11)
 class ofp_action_enqueue (ofp_action_base):
@@ -1968,6 +2002,8 @@ class ofp_action_tp_port (ofp_action_base):
     return outstr
 
 
+print ("LIB OF 01 : ofp_action_vendor_base ")
+
 class ofp_action_vendor_base (ofp_action_base):
   """
   Base class for vendor actions
@@ -2117,11 +2153,14 @@ class ofp_action_vendor_generic (ofp_action_base):
     return outstr
 
 
+print("LIB OF 01 : Message declarations starting")
+
 #3. Controller-to-Switch Messages
 
 ##3.1 Handshake
 @openflow_s_message("OFPT_FEATURES_REPLY", 6,
     reply_to="ofp_features_request")
+@openflow_s_message("OFPT_TEST", 22)
 class ofp_features_reply (ofp_header):
   _MIN_LENGTH = 32
   def __init__ (self, **kw):
@@ -4265,7 +4304,6 @@ class ofp_get_config_request (ofp_header):
     outstr += prefix + 'header: \n'
     outstr += ofp_header.show(self, prefix + '  ')
     return outstr
-
 
 @openflow_s_message("OFPT_GET_CONFIG_REPLY", 8,
     reply_to="ofp_get_config_request")

@@ -45,7 +45,7 @@ class Tutorial (object):
     # Use this table to keep track of which ethernet address is on
     # which switch port (keys are MACs, values are ports).
     self.mac_to_port = {}
-    self.name_table = {'demotest1':8888,'demotest2':9999,'icndemotest':2, 'newnewnew':3}
+    self.name_table = {'demotest1':8888,'demotest2':9999,'icndemotest':3, 'newnewnew':4}
 
 
   def resend_packet (self, packet_in, out_port):
@@ -176,8 +176,6 @@ class Tutorial (object):
     log.debug("OF_TUTORIAL : Calling act like Switch function")
     #self.act_like_hub(packet, packet_in)
     self.act_like_switch(packet, packet_in)
-
-
 
 def launch ():
   """

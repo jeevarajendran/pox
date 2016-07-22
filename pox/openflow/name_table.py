@@ -15,7 +15,8 @@
 """
 Implementation of an OpenFlow name table
 """
-
+#Jeeva : namelinopenflow_01 is used instead of libopenflow_01
+#Jeeva : ofp_match class and its functions are modified in namelibopenflow_01 and which are used in this file
 from namelibopenflow_01 import *
 from pox.lib.revent import *
 
@@ -23,7 +24,7 @@ import time
 import math
 
 # NameTable Entries:
-#   match - ofp_match (13-tuple)
+#   match - ofp_match (1-tuple)
 #   counters - hash from name -> count. May be stale
 #   actions - ordered list of ofp_action_*s to apply for matching packets
 class NameTableEntry (object):
@@ -37,7 +38,7 @@ class NameTableEntry (object):
                 hard_timeout=0, flags=0, match=ofp_match(), actions=[],
                 buffer_id=None, now=None):
     """
-    Initialize table entry
+    Initialize name table entry
     """
     if now is None: now = time.time()
     self.created = now
@@ -136,7 +137,7 @@ class NameTableEntry (object):
     return type(self).__name__ + "\n  " + self.show()
 
   def __repr__ (self):
-    return "TableEntry(" + self.show() + ")"
+    return "NameTableEntry(" + self.show() + ")"
 
   def show (self):
     outstr = ''
@@ -183,6 +184,7 @@ class NameTableEntry (object):
 
 class NameTableModification (Event):
   def __init__ (self, added=[], removed=[], reason=None):
+    print(" NAME TABLE MODIFICATION : init")
     Event.__init__(self)
     self.added = added
     self.removed = removed
@@ -191,14 +193,15 @@ class NameTableModification (Event):
     # Presently, this is only used for removals and is either one of OFPRR_x,
     # or None if it does not correlate to any of the items in the spec.
     self.reason = reason
+    print(" NAME TABLE MODIFICATION : init End")
 
 
 class NameTable (EventMixin):
   """
-  General model of a flow table.
+  General model of a name table.
 
-  Maintains an ordered list of flow entries, and finds matching entries for
-  packets and other entries. Supports expiration of flows.
+  Maintains an ordered list of name flow entries, and finds matching entries for
+  packets and other entries. Supports expiration of name flows.
   """
   _eventMixin_events = set([NameTableModification])
 
@@ -214,6 +217,7 @@ class NameTable (EventMixin):
     """
     pass
 
+  #Jeeva : properties of the table
   @property
   def entries (self):
     return self._table
@@ -230,6 +234,7 @@ class NameTable (EventMixin):
     # Use binary search to insert at correct place
     # This is faster even for modest table sizes, and way, way faster
     # as the tables grow larger.
+    print(" NAME TABLE : add_entry")
     priority = entry.effective_priority
     table = self._table
     low = 0
@@ -244,6 +249,7 @@ class NameTable (EventMixin):
 
     self._dirty()
 
+    print(" NAME TABLE : add_entry : Gonna raiseEvent for NameTableModification")
     self.raiseEvent(NameTableModification(added=[entry]))
 
   def remove_entry (self, entry, reason=None):
@@ -253,6 +259,7 @@ class NameTable (EventMixin):
     self.raiseEvent(NameTableModification(removed=[entry], reason=reason))
 
   def matching_entries (self, match, priority=0, strict=False, out_port=None):
+    print(" NAME TABLE : matching_entries function : Entries for the given match")
     entry_match = lambda e: e.is_matched_by(match, priority, strict, out_port)
     return [ entry for entry in self._table if entry_match(entry) ]
 
@@ -316,20 +323,32 @@ class NameTable (EventMixin):
 
     Returns the highest priority flow table entry that matches the given packet
     on the given in_port, or None if no matching entry is found.
+
+    Jeeva:
+
+      Call ofp_match.from_packet and create a packet match for the received packet
+      from the entries that are already in the name table, find out the matching entry
+      using the packet match created in the previous step
     """
 
-    print (" NAME TABLE , entry_for_packet")
+    print (" NAME TABLE : entry_for_packet")
     packet_match = ofp_match.from_packet(packet, in_port, spec_frags = True)
 
-    #actionsnew = []
-    #actionsnew.__add__(ofp_action_output(port = OFPP_TABLE))
-    entry = NameTableEntry(self,match=packet_match)
+    """
+    Jeeva :
+      What a table entry contains
+      Especially what the actions that can be in a table entry
+      How to create a table entry
+    """
+    entry = NameTableEntry(priority=5, match=packet_match, actions=[ofp_action_output(port=4)])
     self.add_entry(entry)
 
     print(" NAME TABLE, self._table :", self._table )
     for entry in self._table:
       print(" NAME TABLE, match in self.table :", entry.match)
-    '''#Jeeva
+
+    #Jeeva : Add these lines later
+    '''
     for entry in self._table:
       if entry.match.matches_with_wildcards(packet_match,
                                             consider_other_wildcards=False):

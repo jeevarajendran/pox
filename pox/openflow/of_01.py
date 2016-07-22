@@ -38,7 +38,9 @@ import select
 # List where the index is an OpenFlow message type (OFPT_xxx), and
 # the values are unpack functions that unpack the wire format of that
 # type into a message object.
+print("OF 01 : Gonna call make_type_to_unpacker_table ")
 unpackers = make_type_to_unpacker_table()
+print("OF 01 : After unpacking using make_type_to_unpacker_table : ", unpackers)
 
 try:
   PIPE_BUF = select.PIPE_BUF
@@ -176,9 +178,9 @@ def handle_PORT_STATUS (con, msg): #A
     con.raiseEventNoErrors(PortStatus, con, msg)
 
 def handle_PACKET_IN (con, msg): #A
-  print(" *** Jeeva controller : Got packet_in message ", msg.show(), "\n")
+  print(" *** Jeeva controller : Got packet_in message ***", msg.show(), "\n")
   e = con.ofnexus.raiseEventNoErrors(PacketIn, con, msg)
-  print(" *** Jeeva controller : After calling con.ofnexus.raiseEventNoErrors , e :", e, "\n")
+  print(" *** Jeeva controller : After calling con.ofnexus.raiseEventNoErrors : e :", e, "\n")
   if e is None or e.halt != True:
     print(" *** Jeeva controller : e is none \n")
     con.raiseEventNoErrors(PacketIn, con, msg)

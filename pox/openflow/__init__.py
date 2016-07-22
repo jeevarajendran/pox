@@ -34,9 +34,13 @@ NOTE: This module is usually automatically loaded by pox.py
 """
 
 from pox.lib.revent import *
+print("OF INIT : revent import")
 from pox.lib.util import dpidToStr
+print("OF INIT : dpidToStr import ")
 import libopenflow_01 as of
+print("OF INIT : libopenflow_01 import")
 from pox.lib.packet.ethernet import ethernet
+print("OF INIT : ethernet import")
 
 class ConnectionUp (Event):
   """

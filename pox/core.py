@@ -197,11 +197,13 @@ class POXCore (EventMixin):
 
     self.scheduler = recoco.Scheduler(daemon=True)
 
+    print("POXCORE : Scheduler started")
     self._waiters = [] # List of waiting components
+    print("POXCORE : _waiters components")
 
   @property
   def banner (self):
-    return "{0} / Copyright 2011-2013 James McCauley, et al.".format(
+    return "ICN {0} / Copyright 2011-2013 James McCauley, et al.".format(
      self.version_string)
 
   @property
@@ -557,8 +559,10 @@ class POXCore (EventMixin):
 core = None
 
 def initialize ():
+  print("---------------- INITIALIZING CORE -------------------------")
   global core
   core = POXCore()
+  print("---------------- Returning CORE -------------------------")
   return core
 
 # The below is a big hack to make tests and doc tools work.
