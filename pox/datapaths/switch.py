@@ -567,8 +567,7 @@ class ICNSwitchBase (object):
     pitentry = self.pittable.pit_entry_for_packet(packet,in_port)
 
     if(pitentry == True):
-      print ("IN SWITCH : PIT entry Found in the table, I had to add the input port to list of waiting ports and wait"
-             " for the data")
+      print ("IN SWITCH : PIT entry Found in the table, I had to add the input port to list of waiting ports and wait")
     else :
       print ("IN SWITCH : No PIT entry Found in the table, Gonna look in the FIB")
       self._lookup_count += 1
