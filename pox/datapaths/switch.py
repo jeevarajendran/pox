@@ -34,8 +34,8 @@ TODO
 from pox.lib.util import assert_type, initHelper, dpid_to_str
 from pox.lib.revent import Event, EventMixin
 from pox.lib.recoco import Timer
-from pox.openflow.libopenflow_01 import *
-import pox.openflow.libopenflow_01 as of
+from pox.openflow.namelibopenflow_01 import *
+import pox.openflow.namelibopenflow_01 as of
 from pox.openflow.util import make_type_to_unpacker_table
 from pox.openflow.flow_table import FlowTable, TableEntry
 from pox.openflow.name_table import *
@@ -69,6 +69,7 @@ class DpPacketOut (Event):
     self.switch = node # For backwards compatability
 
 
+
 class ICNSwitchBase (object):
   def __init__ (self, dpid, name=None, ports=4, miss_send_len=128,
                 max_buffers=100, max_entries=0x7fFFffFF, features=None):
@@ -80,6 +81,8 @@ class ICNSwitchBase (object):
      - max_entries is max flows entries per table
     """
     print(" ICN SWITCH BASE: Init Function")
+    print("******** Switch features : ", features)
+
     if name is None: name = dpid_to_str(dpid)
     self.name = name
 
@@ -95,6 +98,7 @@ class ICNSwitchBase (object):
     self._has_sent_hello = False
 
     self.table = NameTable()
+    self.pittable = PitTable()
     self.table.addListeners(self)
 
     self._lookup_count = 0
@@ -226,11 +230,15 @@ class ICNSwitchBase (object):
     """
     return time.time()
 
-  def _handle_FlowTableModification (self, event):
+  def _handle_NameTableModification (self, event):
     """
     Handle flow table modification events
     """
     # Currently, we only use this for sending flow_removed messages
+
+    print(" ICN SWITCH BASE : _handle_NameTableModification : I am the listener who caught the name table modification "
+          "event")
+
     if not event.removed: return
 
     if event.reason in (OFPRR_IDLE_TIMEOUT,OFPRR_HARD_TIMEOUT,OFPRR_DELETE):
@@ -253,6 +261,7 @@ class ICNSwitchBase (object):
     #print(" ICN SWITCH BASE , rx_message : Got a message :  ", msg._from_controller)
     ofp_type = msg.header_type
     h = self.ofp_handlers.get(ofp_type)
+    print(" ICN SWITCH BASE , rx_message : Handler identified for the message :  ", h)
     if h is None:
       raise RuntimeError("No handler for ofp_type %s(%d)"
                          % (ofp_type_map.get(ofp_type), ofp_type))
@@ -315,10 +324,11 @@ class ICNSwitchBase (object):
     Handles flow mods
     """
     self.log.debug("Flow mod details: %s", ofp.show())
-
+    print(" ICN SWITCH BASE : _rx_flow_mod : ofp.command :", ofp.command)
     #self.table.process_flow_mod(ofp)
     #self._process_flow_mod(ofp, connection=connection, table=self.table)
     handler = self.flow_mod_handlers.get(ofp.command)
+    print(" ICN SWITCH BASE : _rx_flow_mod : Handler for the command :", handler)
     if handler is None:
       self.log.warn("Command not implemented: %s" % command)
       self.send_error(type=OFPET_FLOW_MOD_FAILED, code=OFPFMFC_BAD_COMMAND,
@@ -358,10 +368,15 @@ class ICNSwitchBase (object):
     #Jeeva : remove it later
     #Jeeva : Sending a packet_in packet to controller with interest name
     #Jeeva : Controller replies with output port as 3
+
+    '''
+    print(" \n\n\n-----------------------  1st TEST --------------- PACKET_IN ------------------")
     print(" *** ICN SWITCH BASE : Trying for packet in message")
     msg = ofp_packet_in(xid=0,data="Interest:icndemotest")
     print(" ICN SWITCH BASE : Packet in message sent : ", msg.show())
     self.send(msg)
+    print(" -----------------------  1st TEST --------------- PACKET_IN END ------------------\n\n\n")
+    '''
 
     #Jeeva : remove it later
     #Jeeva : trying rx_packet method
@@ -370,9 +385,18 @@ class ICNSwitchBase (object):
     #Jeeva : rx_packet will try to find out a match from the name table / flow table for the packet
     #Jeeva : If no match is found, rx_packet will send the packet to the controller as packet_in
     #Jeeva : 1 is the in port and controller assigns port 4 as output for this packet
+
+    print(" \n\n\n-----------------------  2nd TEST --------------- RX_PACKET that matches an entry on the table------------------")
     print(" ##### ICN SWITCH BASE : Gonna call rx_packet")
     packet =ethernet(raw="Interest:newnewnew")
     self.rx_packet(packet, 1)
+    print(" -----------------------  2nd TEST --------------- RX_PACKET END ------------------\n\n\n")
+
+    print(" \n\n\n-----------------------  3rd TEST --------------- RX_PACKET - No matches in the table------------------")
+    print(" ##### ICN SWITCH BASE : Gonna call rx_packet")
+    packet = ethernet(raw="Interest:oldoldold")
+    self.rx_packet(packet, 2)
+    print(" -----------------------  3rd TEST --------------- RX_PACKET No Match END ------------------\n\n\n")
 
   def _rx_get_config_request (self, ofp, connection):
     msg = ofp_get_config_reply(xid = ofp.xid)
@@ -532,10 +556,21 @@ class ICNSwitchBase (object):
     assert assert_type("packet", packet, ethernet, none_ok=False)
     assert assert_type("in_port", in_port, int, none_ok=False)
     #print(" ICN Switch BASE: Ports list ", self.ports)
+
     port = self.ports.get(in_port)
     if port is None:
       self.log.warn("Got packet on missing port %i", in_port)
       return
+
+    #Jeeva : check for PIT entry
+
+    pitentry = self.pittable.pit_entry_for_packet(packet,in_port)
+
+    if(pitentry == True):
+      print ("IN SWITCH : PIT entry Found in the table")
+    else :
+      print ("IN SWITCH : No PIT entry Found in the table")
+
 
     self._lookup_count += 1
     entry = self.table.entry_for_packet(packet, in_port)
@@ -829,7 +864,8 @@ class ICNSwitchBase (object):
                       ofp=flow_mod, connection=connection)
       return
 
-    new_entry = TableEntry.from_flow_mod(flow_mod)
+    new_entry = NameTableEntry.from_flow_mod(flow_mod)
+    print(" ICN Switch BASE: _flow_mod_add : Created new entry to be added")
 
     if flow_mod.flags & OFPFF_CHECK_OVERLAP:
       if table.check_for_overlapping_entry(new_entry):
@@ -840,6 +876,7 @@ class ICNSwitchBase (object):
 
     if flow_mod.command == OFPFC_ADD:
       # Exactly matching entries have to be removed if OFPFC_ADD
+      print(" ICN Switch BASE: _flow_mod_add : Gonna call remove_matching_entries to remove existing entries")
       table.remove_matching_entries(match, priority=priority, strict=True)
 
     if len(table) >= self.max_entries:
@@ -849,12 +886,14 @@ class ICNSwitchBase (object):
                       ofp=flow_mod, connection=connection)
       return
 
+    print(" ICN Switch BASE: _flow_mod_add : Gonna call add_entry to add new entry to the table")
     table.add_entry(new_entry)
 
   def _flow_mod_modify (self, flow_mod, connection, table, strict=False):
     """
     Process an OFPFC_MODIFY flow mod sent to the switch.
     """
+    print(" ICN SWITCH BASE : _flow_mod_modify : Funtion")
     match = flow_mod.match
     priority = flow_mod.priority
 
@@ -1338,9 +1377,12 @@ class SwitchFeatures (object):
   and ".cap_foo" for all OFPC_FOO (as gathered from libopenflow).
   """
   def __init__ (self, **kw):
-    print(" Switch Features : init function")
+    print(" ****** Switch Features : init function")
     self._cap_info = {}
+    print(dir(ofp_capabilities_map))
     for val,name in ofp_capabilities_map.iteritems():
+      print(" Capabilities - name : ", name)
+      print(" Capabilities - value : ", val)
       name = name[5:].lower() # strip OFPC_
       name = "cap_" + name
       setattr(self, name, False)
@@ -1348,6 +1390,8 @@ class SwitchFeatures (object):
 
     self._act_info = {}
     for val,name in ofp_action_type_map.iteritems():
+      print(" Action name : ", name)
+      print(" Action value : ", val)
       name = name[6:].lower() # strip OFPAT_
       name = "act_" + name
       setattr(self, name, False)
@@ -1383,3 +1427,6 @@ class SwitchFeatures (object):
     l = list(k for k in self._cap_info if getattr(self, k))
     l += list(k for k in self._act_info if getattr(self, k))
     return ",".join(l)
+
+
+

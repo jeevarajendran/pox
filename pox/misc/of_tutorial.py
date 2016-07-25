@@ -22,7 +22,7 @@ It's roughly similar to the one Brandon Heller did for NOX.
 """
 
 from pox.core import core
-import pox.openflow.libopenflow_01 as of
+import pox.openflow.namelibopenflow_01 as of
 
 log = core.getLogger()
 
@@ -45,7 +45,7 @@ class Tutorial (object):
     # Use this table to keep track of which ethernet address is on
     # which switch port (keys are MACs, values are ports).
     self.mac_to_port = {}
-    self.name_table = {'demotest1':8888,'demotest2':9999,'icndemotest':3, 'newnewnew':4}
+    self.name_table = {'demotest1':8888,'demotest2':9999,'icndemotest':3, 'newnewnew':4, 'oldoldold':4}
 
 
   def resend_packet (self, packet_in, out_port):
@@ -88,69 +88,33 @@ class Tutorial (object):
     """
     Implement switch-like behavior.
     """
-
-    """ # DELETE THIS LINE TO START WORKING ON THIS (AND THE ONE BELOW!) #
-
-    # Here's some psuedocode to start you off implementing a learning
-    # switch.  You'll need to rewrite it as real Python code.
-
-    # Learn the port for the source MAC
-    self.mac_to_port ... <add or update entry>
-
-    if the port associated with the destination MAC of the packet is known:
-      # Send packet out the associated port
-      self.resend_packet(packet_in, ...)
-
-      # Once you have the above working, try pushing a flow entry
-      # instead of resending the packet (comment out the above and
-      # uncomment and complete the below.)
-
-      log.debug("Installing flow...")
-      # Maybe the log statement should have source/destination/port?
-
-      #msg = of.ofp_flow_mod()
-      #
-      ## Set fields to match received packet
-      #msg.match = of.ofp_match.from_packet(packet)
-      #
-      #< Set other fields of flow_mod (timeouts? buffer_id?) >
-      #
-      #< Add an output action, and send -- similar to resend_packet() >
-
-    else:
-      # Flood the packet out everything but the input port
-      # This part looks familiar, right?
-      self.resend_packet(packet_in, of.OFPP_ALL)
-
-    """
     # DELETE THIS LINE TO START WORKING ON THIS #
     log.debug("OF_TUTORIAL : ACT LIKE SWITCH function")
+
     #Jeeva : event.data or packet.raw will give the data payload
     interest = packet.raw
-    name = interest.split(":")[1]
-    print("Interest name : ", name)
-    # self.name_table[name]='7777'
+    interest_name = interest.split(":")[1]
+    print("Interest name : ", interest_name)
     print("Name Dictionary :", self.name_table)
-    port = self.name_table[name]
+    port = self.name_table[interest_name]
     print("Port to send :", port)
-    self.resend_packet(packet_in, port)
 
-    '''
-    self.mac_to_port[packet.src] = packet_in.in_port
-    if packet.dst in self.mac_to_port:
-      print("Packet sent to Control Plane")
-      # Send the packet to the destination
-      self.resend_packet(packet_in,self.mac_to_port[packet.dst])
-      # Install a flow
-      msg = of.ofp_flow_mod()
-      msg.match.dl_dst = packet.dst
-      msg.actions.append(of.ofp_action_output(port=self.mac_to_port[packet.dst]))
-      self.connection.send(msg)
-      print("Sent message to Switch")
-    else:
-      print("Send to ALL ports")
-      self.resend_packet(packet_in, of.OFPP_ALL)
-    '''
+    #Jeeva : push a flow mod message
+
+    print("OF_TUTORIAL : Sending Flow Mod message")
+    msg = of.ofp_flow_mod()
+    msg.match = of.ofp_match.from_packet(packet)
+    msg.idle_timeout = 10
+    msg.hard_timeout = 30
+    msg.actions.append(of.ofp_action_output(port=port))
+    #msg.data = event.ofp
+    self.connection.send(msg)
+    print("OF_TUTORIAL : Sent Flow Mod message")
+
+    print("OF_TUTORIAL : Gonna resend the packet in the corressponding port through switch")
+    self.resend_packet(packet, port) #Jeeva : Change from packet to packet_in later
+
+
 
   def _handle_PacketIn (self, event):
     """

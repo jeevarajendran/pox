@@ -53,7 +53,7 @@ except:
     # (Hopefully) reasonable default
     PIPE_BUF = 512
 
-import pox.openflow.libopenflow_01 as of
+import pox.openflow.namelibopenflow_01 as of
 
 import threading
 import os
@@ -698,6 +698,8 @@ class Connection (EventMixin):
       # There's actually no reason the data has to be an instance of
       # ofp_header, but this check is likely to catch a lot of bugs,
       # so we check it anyway.
+      print("**** of.ofp_header :", of.ofp_header, "\n\n")
+      print("**** data :", data, "\n\n")
       assert isinstance(data, of.ofp_header)
       data = data.pack()
 
@@ -971,7 +973,7 @@ def launch (port = 6633, address = "0.0.0.0"):
   deferredSender = DeferredSender()
 
   if of._logger is None:
-    of._logger = core.getLogger('libopenflow_01')
+    of._logger = core.getLogger('namelibopenflow_01')
 
   l = OpenFlow_01_Task(port = int(port), address = address)
   core.register("of_01", l)

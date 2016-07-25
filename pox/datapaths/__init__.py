@@ -22,6 +22,7 @@ Example:
 from pox.lib.ioworker.workers import BackoffWorker
 from pox.datapaths.switch import SoftwareSwitch, OFConnection, ICNSwitch
 from pox.datapaths.switch import ExpireMixin
+from pox.datapaths.nx_switch import NXSoftwareSwitch
 from pox.lib.util import dpid_to_str, str_to_dpid
 
 
@@ -146,3 +147,4 @@ def icnswitch (address='127.0.0.1', port = 6633, max_retry_delay = 16,
   print("DATAPATH : Gonna call Do Launch")
   do_launch(ExpiringSwitch, address, port, max_retry_delay, dpid,
             extra_args = extra)
+

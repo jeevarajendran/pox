@@ -554,9 +554,11 @@ NO_BUFFER = 4294967295
 class ofp_header (ofp_base):
   _MIN_LENGTH = 8
   def __init__ (self, **kw):
+    print(" NAME LIB : OFP_HEADER : Initialization")
     self.version = OFP_VERSION
     #self.header_type = None # Set via class decorator
     self._xid = None
+    print(" NAME LIB : OFP_HEADER : kw : ", kw)
     if 'header_type' in kw:
       self.header_type = kw.pop('header_type')
     initHelper(self, kw)
@@ -945,74 +947,27 @@ class ofp_match (ofp_base):
     @param packet  A pox.packet.ethernet instance or a packet_in
     @param spec_frags Handle IP fragments as specified in the spec.
     """
-    print(" NAME OF LIB : Construct an exact match for the given packet")
+    print(" NAME LIB : ofp_match : from_packet : Construct an exact match for the given packet")
     if isinstance(packet, ofp_packet_in):
       in_port = packet.in_port
       packet = ethernet(packet.data)
     else : #Jeeva
-      print(" NAME OF LIB : Not Packet_in, Just an ethernet packet")
+      print(" NAME LIB : ofp_match : from_packet : Not Packet_in, Just an ethernet packet")
     assert assert_type("packet", packet, ethernet, none_ok=False)
 
-    print(" +*+*+*+*+*+*+*+**+ NAME oF LIB : packet data :", packet.raw)
+    print(" NAME LIB : ofp_match : from_packet : packet data :", packet.raw)
     raw_packet = packet.raw
-    interest=raw_packet.split(":")[0]
+    interest=raw_packet.split(":")[1]
     match = cls()
-    print(" +*+*+*+*+*+*+*+**+ NAME oF LIB : Match class :", match.show())
+    print(" NAME LIB : ofp_match : from_packet : Matching class :", match.show())
     if interest is not None:
-      print(" +*+*+*+*+*+*+*+**+ NAME oF LIB : Setting the matched interest")
+      print(" NAME LIB : ofp_match : from_packet : Setting the interest name in the match object")
       match.interest_name = interest
-      print(" +*+*+*+*+*+*+*+**+ NAME oF LIB : Done setting the matched interest")
+      print(" NAME LIB : ofp_match : from_packet : Done setting the interest name in the match object")
     else: #Jeeva
-      print(" +*+*+*+*+*+*+*+**+ NAME oF LIB : No matched interest : Setting to Test")
+      print(" NAME LIB : ofp_match : from_packet : No interest in the packet: Setting to Test")
       match.interest_name = "Test"
 
-    '''
-    match.dl_src = packet.src
-    match.dl_dst = packet.dst
-    match.dl_type = packet.type
-    p = packet.next
-
-    # Is this in the spec?
-    if packet.type < 1536:
-      match.dl_type = OFP_DL_TYPE_NOT_ETH_TYPE
-    # LLC then VLAN?  VLAN then LLC?
-    if isinstance(p, llc):
-      if p.has_snap and p.oui == '\0\0\0':
-        match.dl_type = p.eth_type
-        p = p.next
-    if isinstance(p, vlan):
-      match.dl_type = p.eth_type
-      match.dl_vlan = p.id
-      match.dl_vlan_pcp = p.pcp
-      p = p.next
-    else:
-      match.dl_vlan = OFP_VLAN_NONE
-      match.dl_vlan_pcp = 0
-
-    if isinstance(p, ipv4):
-      match.nw_src = p.srcip
-      match.nw_dst = p.dstip
-      match.nw_proto = p.protocol
-      match.nw_tos = p.tos
-      if spec_frags and ((p.flags & p.MF_FLAG) or p.frag != 0):
-        # This seems a bit strange, but see page 9 of the spec.
-        match.tp_src = 0
-        match.tp_dst = 0
-        return match
-      p = p.next
-
-      if isinstance(p, udp) or isinstance(p, tcp):
-        match.tp_src = p.srcport
-        match.tp_dst = p.dstport
-      elif isinstance(p, icmp):
-        match.tp_src = p.type
-        match.tp_dst = p.code
-    elif isinstance(p, arp):
-      if p.opcode <= 255:
-        match.nw_proto = p.opcode
-        match.nw_src = p.protosrc
-        match.nw_dst = p.protodst
-    '''
     return match
 
   def clone (self):
@@ -1040,7 +995,7 @@ class ofp_match (ofp_base):
     return reversed
 
   def __init__ (self, **kw):
-    print("+ * + * + * + * + * + * + * + ** + NAME OF LIB : OFP_MATCH Init ")
+    print(" NAME LIB : ofp_match : Init ")
     self._locked = False
 
     for k,v in ofp_match_data.iteritems():
@@ -1141,7 +1096,9 @@ class ofp_match (ofp_base):
       return value
 
     if name == 'interest_name':
-      print("Name is interest_name")
+      print(" NAME LIB : ofp_match : __setattr__ for interest_name")
+      print(" NAME LIB : ofp_match : Interest value :", value)
+      setattr(self, '_' + name, value)
       return value
 
     if value is None:
@@ -1155,6 +1112,8 @@ class ofp_match (ofp_base):
 
   def __getattr__ (self, name):
     if name in ofp_match_data:
+      if name == "interest_name":
+        return self.__dict__['_' + name]
       if ( (self.wildcards & ofp_match_data[name][1])
            == ofp_match_data[name][1] ):
         # It's wildcarded -- always return None
@@ -1416,82 +1375,23 @@ class ofp_match (ofp_base):
     Important for non-strict modify flow_mods etc.
     """
 
-    print(" NAME LIB OF 01 : matches_with_wildcards ")
+    print(" NAME LIB : matches_with_wildcards : function ")
     if self == other:
-      print(" NAME LIB OF 01 : matches are same")
+      print(" NAME LIB : matches_with_wildcards : self and other matches are same objects")
       return True
 
-    print(" self.interest_name : ", self.interest_name)
-    print(" other.interest_name : ", other.interest_name)
+    print(" NAME LIB : matches_with_wildcards : self and other matches are not same objects ")
+    print(" NAME LIB : matches_with_wildcards : self.interest_name : ", self.interest_name)
+    print(" NAME LIB : matches_with_wildcards : other.interest_name : ", other.interest_name)
     if self.interest_name == other.interest_name:
       return True
 
-    '''
-    assert assert_type("other", other, ofp_match, none_ok=False)
-
-    # shortcut for equal matches
-    if self == other: return True
-
-    if consider_other_wildcards:
-      # Check that other doesn't have more wildcards than we do -- it
-      # must be narrower (or equal) to us.
-      self_bits  = self.wildcards&~(OFPFW_NW_SRC_MASK|OFPFW_NW_DST_MASK)
-      other_bits = other.wildcards&~(OFPFW_NW_SRC_MASK|OFPFW_NW_DST_MASK)
-      if (self_bits | other_bits) != self_bits: return False
-
-    def match_fail (mine, others):
-      if mine is None: return False # Wildcarded
-      return mine != others
-
-    if match_fail(self.in_port, other.in_port): return False
-    if match_fail(self.dl_vlan, other.dl_vlan): return False
-    if match_fail(self.dl_src, other.dl_src): return False
-    if match_fail(self.dl_dst, other.dl_dst): return False
-    if match_fail(self.dl_type, other.dl_type): return False
-    if match_fail(self.nw_proto, other.nw_proto): return False
-    if match_fail(self.tp_src, other.tp_src): return False
-    if match_fail(self.tp_dst, other.tp_dst): return False
-    if match_fail(self.dl_vlan_pcp, other.dl_vlan_pcp): return False
-    if match_fail(self.nw_tos, other.nw_tos): return False
-
-    #FIXME: The two ??? checks below look like they compare other
-    #       wildcards always -- even when consider_other_wildcards=False.
-    #       Is this intentional?  (I think it might be subtly wrong and
-    #       we actually may need to mask off some bits and do the
-    #       inNetwork check or something...)
-
-    self_nw_src = self.get_nw_src()
-    if self_nw_src[0] is not None:
-      other_nw_src = other.get_nw_src()
-      if self_nw_src[1] > other_nw_src[1]: return False #???
-      if not IPAddr(other_nw_src[0]).inNetwork(
-            (self_nw_src[0], self_nw_src[1])): return False
-
-    self_nw_dst = self.get_nw_dst()
-    if self_nw_dst[0] is not None:
-      other_nw_dst = other.get_nw_dst()
-      if self_nw_dst[1] > other_nw_dst[1]: return False #???
-      if not IPAddr(other_nw_dst[0]).inNetwork(
-            (self_nw_dst[0], self_nw_dst[1])): return False
-    '''
-
-    return True
+    return False
 
   def __eq__ (self, other):
     if type(self) != type(other): return False
     if self.wildcards != other.wildcards: return False
-    if self.in_port != other.in_port: return False
-    if self.dl_src != other.dl_src: return False
-    if self.dl_dst != other.dl_dst: return False
-    if self.dl_vlan != other.dl_vlan: return False
-    if self.dl_vlan_pcp != other.dl_vlan_pcp: return False
-    if self.dl_type != other.dl_type: return False
-    if self.nw_tos != other.nw_tos: return False
-    if self.nw_proto != other.nw_proto: return False
-    if self.nw_src != other.nw_src: return False
-    if self.nw_dst != other.nw_dst: return False
-    if self.tp_src != other.tp_src: return False
-    if self.tp_dst != other.tp_dst: return False
+    if self.interest_name != other.interest_name : return False
     return True
 
   def __str__ (self):
@@ -1590,10 +1490,13 @@ class ofp_action_generic (ofp_action_base):
 @openflow_action('OFPAT_OUTPUT', 0)
 class ofp_action_output (ofp_action_base):
   def __init__ (self, **kw):
+    print(" NAME LIB : ofp_action_output : self :", self)
+    print(" NAME LIB : ofp_action_output : kw :", kw)
     self.port = None # Purposely bad -- require specification
     self.max_len = 0xffFF
-
+    print(" NAME LIB : ofp_action_output : self.port before calling initHelper :", self.port)
     initHelper(self, kw)
+    print(" NAME LIB : ofp_action_output : self.port after calling initHelper :", self.port)
 
   def pack (self):
     if self.port != OFPP_CONTROLLER:
@@ -4389,6 +4292,7 @@ def _unpack_actions (b, length, offset=0):
   offset, if specified, is where in b to start decoding
   returns (next_offset, [Actions])
   """
+  print(" Inside _unpack_actions function")
   if (len(b) - offset) < length: raise UnderrunError
   actions = []
   end = length + offset
@@ -4407,8 +4311,11 @@ def _unpack_actions (b, length, offset=0):
     offset += l
   return (offset, actions)
 
+print("  Gonna call _init function")
 def _init ():
+  print(" Inside _init function")
   def formatMap (name, m):
+    print(" INside format map function")
     o = name + " = {\n"
     vk = sorted([(v,k) for k,v in m.iteritems()])
     maxlen = 2 + len(reduce(lambda a,b: a if len(a)>len(b) else b,
@@ -4435,6 +4342,7 @@ def _init ():
   return
   """
   maps = []
+  print(" $$$$$$$$$$$$$$$ globals()", globals())
   for k,v in globals().iteritems():
     if (k.startswith("ofp_") and k.endswith("_rev_map")
         and type(v) == dict):
@@ -4497,5 +4405,5 @@ ofp_match_data = {
   'nw_dst' : (0, OFPFW_NW_DST_ALL),
   'tp_src' : (0, OFPFW_TP_SRC),
   'tp_dst' : (0, OFPFW_TP_DST),
-  'interest_name':("","sample")
+  'interest_name':("",100)
 }
