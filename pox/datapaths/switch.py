@@ -389,13 +389,13 @@ class ICNSwitchBase (object):
     print(" \n\n\n-----------------------  2nd TEST --------------- RX_PACKET that matches an entry on the table------------------")
     print(" ##### ICN SWITCH BASE : Gonna call rx_packet")
     packet =ethernet(raw="Interest:newnewnew")
-    self.rx_packet(packet, 1)
+    self.rx_packet(packet, 4)
     print(" -----------------------  2nd TEST --------------- RX_PACKET END ------------------\n\n\n")
 
     print(" \n\n\n-----------------------  3rd TEST --------------- RX_PACKET - No matches in the table------------------")
     print(" ##### ICN SWITCH BASE : Gonna call rx_packet")
     packet = ethernet(raw="Interest:oldoldold")
-    self.rx_packet(packet, 2)
+    self.rx_packet(packet, 4)
     print(" -----------------------  3rd TEST --------------- RX_PACKET No Match END ------------------\n\n\n")
 
   def _rx_get_config_request (self, ofp, connection):
@@ -567,30 +567,31 @@ class ICNSwitchBase (object):
     pitentry = self.pittable.pit_entry_for_packet(packet,in_port)
 
     if(pitentry == True):
-      print ("IN SWITCH : PIT entry Found in the table")
+      print ("IN SWITCH : PIT entry Found in the table, I had to add the input port to list of waiting ports and wait"
+             " for the data")
     else :
-      print ("IN SWITCH : No PIT entry Found in the table")
+      print ("IN SWITCH : No PIT entry Found in the table, Gonna look in the FIB")
+      self._lookup_count += 1
+      entry = self.table.entry_for_packet(packet, in_port)
+      print(" ICN SWITCH BASE , rx_packet , entry : ", entry)
+      if entry is not None:
+        print(" ICN SWITCH BASE : Matching Entry Found")
+        self._matched_count += 1
+        entry.touch_packet(len(packet))
+        print(" ICN SWITCH BASE : Gonna process the packet")
+        self._process_actions_for_packet(entry.actions, packet, in_port)
+      else:
+        # no matching entry
+        print(" ICN SWITCH BASE : No Matching Entry")
+        if port.config & OFPPC_NO_PACKET_IN:
+          return
+        buffer_id = self._buffer_packet(packet, in_port)
+        if packet_data is None:
+          packet_data = packet.pack()
+        self.send_packet_in(in_port, buffer_id, packet_data,
+                            reason=OFPR_NO_MATCH, data_length=self.miss_send_len)
 
 
-    self._lookup_count += 1
-    entry = self.table.entry_for_packet(packet, in_port)
-    print( " ICN SWITCH BASE , rx_packet , entry : ", entry)
-    if entry is not None:
-      print(" ICN SWITCH BASE : Matching Entry Found")
-      self._matched_count += 1
-      entry.touch_packet(len(packet))
-      print(" ICN SWITCH BASE : Gonna process the packet")
-      self._process_actions_for_packet(entry.actions, packet, in_port)
-    else:
-      # no matching entry
-      print(" ICN SWITCH BASE : No Matching Entry")
-      if port.config & OFPPC_NO_PACKET_IN:
-        return
-      buffer_id = self._buffer_packet(packet, in_port)
-      if packet_data is None:
-        packet_data = packet.pack()
-      self.send_packet_in(in_port, buffer_id, packet_data,
-                          reason=OFPR_NO_MATCH, data_length=self.miss_send_len)
 
   def delete_port (self, port):
     """

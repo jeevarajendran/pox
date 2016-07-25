@@ -733,18 +733,22 @@ class PitTable(EventMixin):
     if (packet_match.interest_name == "newnewnew"):
       entry = PitTableEntry(prefix="newnewnew",ports=[1])
       print (
-        " NAME TABLE : Created a sample entry to match with the packet(newnewnew) : using the packet match itself as a hack")
+        " PIT TABLE : Created a sample entry to match with the packet(newnewnew) : using the packet match itself as a "
+        "hack ports : 1")
       self.add_entry(entry)
     else:
       entry = PitTableEntry(prefix="oldoldold", ports=[2,3])
       print (
-        " NAME TABLE : Created a sample entry to match with the packet(newnewnew) : using the packet match itself as a hack")
+        " PIT TABLE : Created a sample entry to match with the packet(oldoldold) : using the packet match itself as a "
+        "hack ports : 2, 3")
       self.add_entry(entry)
 
     for entry in self._table:
       print(" NAME TABLE, checking each entry  :", entry, "\n")
       if entry.prefix == interest_name :
-        print (" PIT entry Found")
+        print (" PIT entry Found: Adding the input port to the list")
+        entry.ports.append(in_port)
+        print (" PIT entry ports :", entry.ports)
         return True
 
     return False
