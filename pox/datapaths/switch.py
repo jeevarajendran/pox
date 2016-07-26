@@ -97,9 +97,13 @@ class ICNSwitchBase (object):
     self.config_flags = 0
     self._has_sent_hello = False
 
-    self.table = NameTable()
-    self.pittable = PitTable()
+    self.table = FibTable()
+    self.pit_table = PitTable()
+    self.content_store = ContentStore()
+
     self.table.addListeners(self)
+    self.pit_table.addListeners(self)
+    self.content_store.addListeners(self)
 
     self._lookup_count = 0
     self._matched_count = 0
@@ -166,11 +170,15 @@ class ICNSwitchBase (object):
     #TODO: Refactor this with above
     self.action_handlers = {}
     for value,name in ofp_action_type_map.iteritems():
+      print(" *** Setting Action Handlers for the action :", name)
       name = name.split("OFPAT_",1)[-1].lower()
+      print("name = ", name)
       h = getattr(self, "_action_" + name, None)
       if not h: continue
-      if getattr(self.features, "act_" + name) is False: continue
+      #if getattr(self.features, "act_" + name) is False: continue #Jeeva : Add this back. Seems like it is
+      #checking whether the action is listed as switch features
       self.action_handlers[value] = h
+      print(" *** Handler that is set :", h )
 
     # Set up handlers for stats handlers
     # That is, self.stats_handlers[OFPST_FOO] = self._stats_foo
@@ -230,13 +238,13 @@ class ICNSwitchBase (object):
     """
     return time.time()
 
-  def _handle_NameTableModification (self, event):
+  def _handle_FibTableModification (self, event):
     """
     Handle flow table modification events
     """
     # Currently, we only use this for sending flow_removed messages
 
-    print(" ICN SWITCH BASE : _handle_NameTableModification : I am the listener who caught the name table modification "
+    print(" ICN SWITCH BASE : _handle_FibTableModification : I am the listener who caught the name table modification "
           "event")
 
     if not event.removed: return
@@ -386,17 +394,39 @@ class ICNSwitchBase (object):
     #Jeeva : If no match is found, rx_packet will send the packet to the controller as packet_in
     #Jeeva : 1 is the in port and controller assigns port 4 as output for this packet
 
-    print(" \n\n\n-----------------------  2nd TEST --------------- RX_PACKET that matches an entry on the table------------------")
+    print(" \n\n\n-----------------------  1st TEST --------------- RX_PACKET - CS match------------------")
     print(" ##### ICN SWITCH BASE : Gonna call rx_packet")
-    packet =ethernet(raw="Interest:newnewnew")
+    packet =ethernet(raw="Interest:/test/contentstorematch")
     self.rx_packet(packet, 4)
-    print(" -----------------------  2nd TEST --------------- RX_PACKET END ------------------\n\n\n")
+    print(" -----------------------  1st TEST --------------- RX_PACKET - CS match END ------------------\n\n\n")
 
-    print(" \n\n\n-----------------------  3rd TEST --------------- RX_PACKET - No matches in the table------------------")
+    print(" \n\n\n-----------------------  2nd TEST --------------- RX_PACKET - PIT match------------------")
     print(" ##### ICN SWITCH BASE : Gonna call rx_packet")
-    packet = ethernet(raw="Interest:oldoldold")
+    packet = ethernet(raw="Interest:/test/pitmatch")
     self.rx_packet(packet, 4)
-    print(" -----------------------  3rd TEST --------------- RX_PACKET No Match END ------------------\n\n\n")
+    print(" -----------------------  2nd TEST --------------- RX_PACKET - PIT match END ------------------\n\n\n")
+
+    print(" \n\n\n-----------------------  3rd TEST --------------- RX_PACKET - FIB match ------------------")
+    print(" *** ICN SWITCH BASE : Trying for packet in message")
+    packet = ethernet(raw="Interest:/test/fibmatch")
+    #print(" ICN SWITCH BASE : Packet in message sent : ", msg.show())
+    self.rx_packet(packet, 4)
+    print(" -----------------------  3rd TEST --------------- RX_PACKET - FIB match END ------------------\n\n\n")
+
+    print(" \n\n\n-----------------------  4th TEST --------------- RX_PACKET - No match ------------------")
+    print(" *** ICN SWITCH BASE : Trying for packet in message")
+    packet = ethernet(raw="Interest:/test/nomatch")
+    #print(" ICN SWITCH BASE : Packet in message sent : ", msg.show())
+    self.rx_packet(packet, 4)
+    print(" -----------------------  4th TEST --------------- RX_PACKET - No match END ------------------\n\n\n")
+
+    print(" \n\n\n-----------------------  5th TEST --------------- RX_PACKET - Data ------------------")
+    print(" *** ICN SWITCH BASE : Trying for packet in message")
+    packet = ethernet(raw="Interest:/test/fibmatch,Data:Sample_Data_For_Fibmatch")
+    # print(" ICN SWITCH BASE : Packet in message sent : ", msg.show())
+    self.rx_packet(packet, 4)
+    print(" -----------------------  5th TEST --------------- RX_PACKET - Data  END------------------\n\n\n")
+
 
   def _rx_get_config_request (self, ofp, connection):
     msg = ofp_get_config_reply(xid = ofp.xid)
@@ -553,42 +583,74 @@ class ICNSwitchBase (object):
 
     """
     print(" ICN Switch BASE: rx_packet (process a dataplane packet) ")
+
+    #Jeeva : Ensure the packet is an ethernet packet
     assert assert_type("packet", packet, ethernet, none_ok=False)
     assert assert_type("in_port", in_port, int, none_ok=False)
-    #print(" ICN Switch BASE: Ports list ", self.ports)
 
+    #Jeeva : Check whether the packet is from known port
     port = self.ports.get(in_port)
     if port is None:
       self.log.warn("Got packet on missing port %i", in_port)
       return
 
-    #Jeeva : check for PIT entry
+    raw_packet = packet.raw
+    print(" RAW Packet :", raw_packet)
+    if "Data:" not in raw_packet :
+      if "Interest:" in raw_packet :
+        print(" This is an Interest Packet")
 
-    pitentry = self.pittable.pit_entry_for_packet(packet,in_port)
+        # Jeeva : CS check
 
-    if(pitentry == True):
-      print ("IN SWITCH : PIT entry Found in the table, I had to add the input port to list of waiting ports and wait")
-    else :
-      print ("IN SWITCH : No PIT entry Found in the table, Gonna look in the FIB")
-      self._lookup_count += 1
-      entry = self.table.entry_for_packet(packet, in_port)
-      print(" ICN SWITCH BASE , rx_packet , entry : ", entry)
-      if entry is not None:
-        print(" ICN SWITCH BASE : Matching Entry Found")
-        self._matched_count += 1
-        entry.touch_packet(len(packet))
-        print(" ICN SWITCH BASE : Gonna process the packet")
-        self._process_actions_for_packet(entry.actions, packet, in_port)
-      else:
-        # no matching entry
-        print(" ICN SWITCH BASE : No Matching Entry")
-        if port.config & OFPPC_NO_PACKET_IN:
-          return
-        buffer_id = self._buffer_packet(packet, in_port)
-        if packet_data is None:
-          packet_data = packet.pack()
-        self.send_packet_in(in_port, buffer_id, packet_data,
-                            reason=OFPR_NO_MATCH, data_length=self.miss_send_len)
+        content_store = self.content_store.content_store_entry_for_packet(packet, in_port)
+        if (content_store == True):
+          print(" ICN SWITCH : CS entry found")
+        else:
+
+          # Jeeva : PIT check
+          pit_entry = self.pit_table.pit_entry_for_packet(packet, in_port)
+          if (pit_entry == True):
+            print ("IN SWITCH : PIT entry Found in the table, Added the port to the waiting list")
+          else:
+
+            # Jeeva : FIB check
+            print ("IN SWITCH : No PIT entry Found in the table, Gonna look in the FIB")
+            self._lookup_count += 1
+            fib_entry = self.table.entry_for_packet(packet, in_port)
+            print(" ICN SWITCH BASE , rx_packet , FIB entry : ", fib_entry)
+            if fib_entry is not None:
+              print(" ICN SWITCH BASE : FIB Entry Found")
+              self._matched_count += 1
+              fib_entry.touch_packet(len(packet))
+              print(" ICN SWITCH BASE : Gonna process the packet")
+              self._process_actions_for_packet(fib_entry.actions, packet, in_port)
+            else:
+
+              # Jeeva : Send to controller
+              print(" ICN SWITCH BASE : No Matching Entry found in any of the tables : Send to controller")
+              if port.config & OFPPC_NO_PACKET_IN:
+                return
+              buffer_id = self._buffer_packet(packet, in_port)
+              if packet_data is None:
+                packet_data = packet.pack()
+              self.send_packet_in(in_port, buffer_id, packet_data,
+                                  reason=OFPR_NO_MATCH, data_length=self.miss_send_len)
+      else :
+        print(" Neither Interest Nor Data packet")
+    else:
+      print(" This is a Data Packet")
+      #Extract Interest and Data from the packet
+      interest = raw_packet[len("Interest:"):-len(raw_packet[raw_packet.index(",Data:"):])]
+      data = raw_packet[-raw_packet.index("Data:"):]
+      print(" Interest :", interest)
+      print(" Data :", data)
+      ports = self.pit_table.fetch_faces_from_pit_entry(interest)
+      if (ports != True):
+        print ("IN SWITCH : faces are returned :", ports)
+        for port in ports:
+          self._output_packet(packet, port, in_port)
+      #Jeeva : check for waiting faces in PIT
+
 
 
 
@@ -821,7 +883,7 @@ class ICNSwitchBase (object):
       #  self.rx_packet(packet, in_port)
       #  return
       # Jeeva : So new action handlers have to be added for new actions
-      print(" ICN SWITCH BASE : In _process_actions_for_packet : Inside actions for loop")
+      print(" *** ICN SWITCH BASE : In _process_actions_for_packet : Inside actions for loop ")
       h = self.action_handlers.get(action.type)
       print(" ICN SWITCH BASE : In _process_actions_for_packet : action handler :", h)
       if h is None:
@@ -864,7 +926,7 @@ class ICNSwitchBase (object):
                       ofp=flow_mod, connection=connection)
       return
 
-    new_entry = NameTableEntry.from_flow_mod(flow_mod)
+    new_entry = FibTableEntry.from_flow_mod(flow_mod)
     print(" ICN Switch BASE: _flow_mod_add : Created new entry to be added")
 
     if flow_mod.flags & OFPFF_CHECK_OVERLAP:
@@ -933,6 +995,16 @@ class ICNSwitchBase (object):
     self._flow_mod_delete(flow_mod, connection, table, strict=True)
 
   #Jeeva : These are the different action functions
+
+  #Jeeva : Action to handle ADDPIT action
+  def _action_addpit(self, action, packet, in_port):
+    print(" ICN SWITCH BASE : _action_addpit ")
+    print(" Gonna add the entry into PIT table with the following ports from action", action.ports)
+    match=ofp_match(interest_name=action.interest_name)
+    self.pit_table.add_entry(PitTableEntry(match=match,ports=action.ports))
+    return True
+
+
   def _action_output (self, action, packet, in_port):
     print(" ICN SWITCH BASE : _action_output ")
     self._output_packet(packet, action.port, in_port, action.max_len)

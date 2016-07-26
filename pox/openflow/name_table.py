@@ -24,11 +24,13 @@ import time
 import math
 
 
-# NameTable Entries:
+#1. FIB
+
+# FibTable Entries:
 #   match - ofp_match (1-tuple)
 #   counters - hash from name -> count. May be stale
 #   actions - ordered list of ofp_action_*s to apply for matching packets
-class NameTableEntry (object):
+class FibTableEntry (object):
   """
   Models a flow table entry, with a match, actions, and options/flags/counters.
 
@@ -59,7 +61,7 @@ class NameTableEntry (object):
 
   @staticmethod
   def from_flow_mod (flow_mod):
-    return NameTableEntry(priority=flow_mod.priority,
+    return FibTableEntry(priority=flow_mod.priority,
                       cookie=flow_mod.cookie,
                       idle_timeout=flow_mod.idle_timeout,
                       hard_timeout=flow_mod.hard_timeout,
@@ -140,7 +142,7 @@ class NameTableEntry (object):
     return type(self).__name__ + "\n  " + self.show()
 
   def __repr__ (self):
-    return "NameTableEntry(" + self.show() + ")"
+    return "FibTableEntry(" + self.show() + ")"
 
   def show (self):
     outstr = ''
@@ -185,9 +187,9 @@ class NameTableEntry (object):
     return fr
 
 
-class NameTableModification (Event):
+class FibTableModification (Event):
   def __init__ (self, added=[], removed=[], reason=None):
-    print(" NAME TABLE MODIFICATION : init")
+    print(" FIB MODIFICATION : init")
     Event.__init__(self)
     self.added = added
     self.removed = removed
@@ -196,25 +198,36 @@ class NameTableModification (Event):
     # Presently, this is only used for removals and is either one of OFPRR_x,
     # or None if it does not correlate to any of the items in the spec.
     self.reason = reason
-    print(" NAME TABLE MODIFICATION : init End")
+    print(" FIB MODIFICATION : init End")
 
 
 
 
-class NameTable (EventMixin):
+class FibTable (EventMixin):
   """
   General model of a name table.
 
   Maintains an ordered list of name flow entries, and finds matching entries for
   packets and other entries. Supports expiration of name flows.
   """
-  _eventMixin_events = set([NameTableModification])
+  _eventMixin_events = set([FibTableModification])
 
   def __init__ (self):
     EventMixin.__init__(self)
 
     # Table is a list of TableEntry sorted by descending effective_priority.
     self._table = []
+    self.initFibTable()
+
+  def initFibTable(self):
+    print(" FIB : initFibTable function")
+
+    match = ofp_match(interest_name="/test/fibmatch")
+    entry = FibTableEntry(priority=5, match=match, actions=[ofp_action_output(port=1),ofp_action_output(port=2),
+                                                             ofp_action_addpit(
+                                                               interest_name="/test/fibmatch",ports=[1,2])])
+    print (" FIB : Created FIB entry for prefix : /test/fibmatch")
+    self.add_entry(entry)
 
   def _dirty (self):
     """
@@ -231,9 +244,9 @@ class NameTable (EventMixin):
     return len(self._table)
 
   def add_entry (self, entry):
-    print("NAME TABLE : Entry to be added :", entry)
-    print("NAME TABLE : Name table entry :", NameTableEntry)
-    assert isinstance(entry, NameTableEntry)
+    print(" FIB : Entry to be added :", entry)
+    #print(" FIB : Fib table entry :", FibTableEntry)
+    assert isinstance(entry, FibTableEntry)
 
     #self._table.append(entry)
     #self._table.sort(key=lambda e: e.effective_priority, reverse=True)
@@ -241,7 +254,7 @@ class NameTable (EventMixin):
     # Use binary search to insert at correct place
     # This is faster even for modest table sizes, and way, way faster
     # as the tables grow larger.
-    print(" NAME TABLE : add_entry")
+    print(" FIB : add_entry")
     print(" ----------------------\n\n")
 
     priority = entry.effective_priority
@@ -254,25 +267,25 @@ class NameTable (EventMixin):
           high = middle
           continue
         low = middle + 1
-    print(" NAME TABLE : Table before adding the new entry :", table)
+    print(" FIB : Table before adding the new entry :", table)
     print("\n\n")
     table.insert(low, entry)
 
     self._dirty()
 
-    print(" NAME TABLE : Table after adding the new entry :", table)
+    print(" FIB : Table after adding the new entry :", table)
     print(" ----------------------\n\n")
-    print(" NAME TABLE : add_entry : Gonna raiseEvent for NameTableModification")
-    self.raiseEvent(NameTableModification(added=[entry]))
+    print(" FIB : add_entry : Gonna raiseEvent for FibTableModification, commented for now")
+    #self.raiseEvent(FibTableModification(added=[entry]))
 
   def remove_entry (self, entry, reason=None):
-    assert isinstance(entry, NameTableEntry)
+    assert isinstance(entry, FibTableEntry)
     self._table.remove(entry)
     self._dirty()
-    self.raiseEvent(NameTableModification(removed=[entry], reason=reason))
+    self.raiseEvent(FibTableModification(removed=[entry], reason=reason))
 
   def matching_entries (self, match, priority=0, strict=False, out_port=None):
-    print(" NAME TABLE : matching_entries function : Entries for the given match")
+    print(" FIB : matching_entries function : Entries for the given match")
     entry_match = lambda e: e.is_matched_by(match, priority, strict, out_port)
     return [ entry for entry in self._table if entry_match(entry) ]
 
@@ -310,7 +323,7 @@ class NameTable (EventMixin):
       else:
         i += 1
     assert len(remove_flows) == 0
-    self.raiseEvent(NameTableModification(removed=flows, reason=reason))
+    self.raiseEvent(FibTableModification(removed=flows, reason=reason))
 
   def remove_expired_entries (self, now=None):
     idle = []
@@ -326,7 +339,7 @@ class NameTable (EventMixin):
 
   def remove_matching_entries (self, match, priority=0, strict=False,
                                out_port=None, reason=None):
-    print(" NAME TABLE : remove_matching_entries")
+    print(" FIB : remove_matching_entries")
     remove_flows = self.matching_entries(match, priority, strict, out_port)
     self._remove_specific_entries(remove_flows, reason=reason)
     return remove_flows
@@ -353,32 +366,22 @@ class NameTable (EventMixin):
       How to create a table entry
     """
 
-    print (" NAME TABLE : entry_for_packet funtion")
+    print (" FIB : entry_for_packet funtion")
 
     packet_match = ofp_match.from_packet(packet, in_port, spec_frags = True)
+    print (" FIB : Created a match with the given packet")
 
-    print (" NAME TABLE : Created a match with the given packet")
+    print(" \n\n FIB : Table before checking for match with the packet:", self._table )
+    print("\n")
 
-    if(packet_match.interest_name == "newnewnew"):
-      entry = NameTableEntry(priority=5, match=packet_match, actions=[ofp_action_output(port=3),ofp_action_output(port=4)])
-      print (" NAME TABLE : Created a sample entry to match with the packet(newnewnew) : using the packet match itself as a hack")
-      self.add_entry(entry)
-    else:
-      print (" NAME TABLE : Sample Entry is not created")
-
-    print(" \n\n NAME TABLE, Entire Table before checking for match with the packet:", self._table )
-    print("\n\n")
-    #for entry in self._table:
-    # print(" NAME TABLE, match in self.table :", entry.match)
-
-    #Jeeva : Add these lines later
+    #Jeeva
     for entry in self._table:
-      print(" NAME TABLE, checking each entry  :", entry , "\n")
+      print(" FIB : checking the entry  :", entry , "\n")
       if entry.match.matches_with_wildcards(packet_match,
                                             consider_other_wildcards=False):
         return entry
     #Jeeva : No entry in the table
-    return None #Jeeva : Should return an entry
+    return None
 
   def check_for_overlapping_entry (self, in_entry):
     """
@@ -419,7 +422,7 @@ class PitTableEntry(object):
   """
 
   def __init__(self, priority=OFP_DEFAULT_PRIORITY, cookie=0, idle_timeout=0,
-               hard_timeout=0, flags=0, prefix="", ports=[], now=None):
+               hard_timeout=0, flags=0, match=ofp_match(), ports=[], now=None):
     """
     Initialize name table entry
     """
@@ -435,7 +438,7 @@ class PitTableEntry(object):
     self.flags = flags
     #self.match = match
     #self.actions = actions
-    self.prefix = prefix
+    self.match = match
     self.ports = ports
     #self.buffer_id = buffer_id
     # self.faces = {1:2,2:3,3:4}
@@ -447,7 +450,7 @@ class PitTableEntry(object):
                           idle_timeout=flow_mod.idle_timeout,
                           hard_timeout=flow_mod.hard_timeout,
                           flags=flow_mod.flags,
-                          prefix=flow_mod.prefix,
+                          match=flow_mod.match,
                           ports=flow_mod.ports
                           )
 
@@ -455,7 +458,7 @@ class PitTableEntry(object):
     if flags is None: flags = self.flags
     return ofp_flow_mod(priority=self.priority,
                         cookie=self.cookie,
-                        prefix=self.prefix,
+                        match=self.match,
                         idle_timeout=self.idle_timeout,
                         hard_timeout=self.hard_timeout,
                         ports=self.ports,
@@ -531,7 +534,7 @@ class PitTableEntry(object):
     outstr += "cookie=%x, " % self.cookie
     outstr += "idle_timeout=%d, " % self.idle_timeout
     outstr += "hard_timeout=%d, " % self.hard_timeout
-    outstr += "prefix=%s, " % self.prefix
+    outstr += "match=%s, " % self.match
     outstr += "ports=%s, " % repr(self.ports)
     #outstr += "buffer_id=%s" % str(self.buffer_id)
     return outstr
@@ -569,7 +572,7 @@ class PitTableEntry(object):
 
 class PitTableModification (Event):
   def __init__ (self, added=[], removed=[], reason=None):
-    print(" NAME TABLE MODIFICATION : init")
+    print(" PIT MODIFICATION : init")
     Event.__init__(self)
     self.added = added
     self.removed = removed
@@ -578,7 +581,7 @@ class PitTableModification (Event):
     # Presently, this is only used for removals and is either one of OFPRR_x,
     # or None if it does not correlate to any of the items in the spec.
     self.reason = reason
-    print(" NAME TABLE MODIFICATION : init End")
+    print(" PIT MODIFICATION : init End")
 
 class PitTable(EventMixin):
 
@@ -599,20 +602,22 @@ class PitTable(EventMixin):
     self.initPitTable()
 
   def initPitTable(self):
-    print("PIT table : initPitTable")
+    print(" PIT : initPitTable")
 
-    #Entry 1
+    #Entry 1 Commented now to check for the 2nd case PIT match
+    '''
     entry = PitTableEntry(prefix="newnewnew", ports=[4])
     print (
         " PIT TABLE : Created a sample entry to match with the packet(newnewnew) : using the packet match itself as a "
         "hack ports : 1")
     self.add_entry(entry)
+    '''
 
     #Entry 2
-    entry = PitTableEntry(prefix="oldoldold", ports=[2, 3])
+    match = ofp_match(interest_name="/test/pitmatch")
+    entry = PitTableEntry(match=match, ports=[2, 3])
     print (
-        " PIT TABLE : Created a sample entry to match with the packet(oldoldold) : using the packet match itself as a "
-        "hack ports : 2, 3")
+        " PIT : Created an entry in PIT table for the prefix: /test/pitmatch")
     self.add_entry(entry)
 
   def _dirty(self):
@@ -631,10 +636,10 @@ class PitTable(EventMixin):
 
   def add_entry(self, entry):
 
-    print("PIT TABLE : Pit Entry to be added :", entry)
-    print("PIT TABLE : Pit table entry :", PitTableEntry)
+    print(" PIT : Pit Entry to be added :", entry)
+    print(" PIT : Pit table entry :", PitTableEntry)
     assert isinstance(entry, PitTableEntry)
-    print(" PIT TABLE : add_pit_entry")
+    print(" PIT: add_pit_entry")
     print(" ----------------------\n\n")
 
     table = self._table
@@ -649,16 +654,16 @@ class PitTable(EventMixin):
         continue
       low = middle + 1
     '''
-    print(" PIT TABLE : Table before adding the new pit entry :", table)
+    print(" PIT : Table before adding the new pit entry :", table)
     print("\n\n")
     table.insert(low, entry)
 
     self._dirty()
 
-    print(" PIT TABLE : Table after adding the new pit entry :", table)
+    print(" PIT : Table after adding the new pit entry :", table)
     print(" ----------------------\n\n")
-    print(" PIT TABLE : add_pit_entry : Gonna raiseEvent for PitTableModification, commented for now : So no event")
-    #self.raiseEvent(NameTableModification(added=[entry]))
+    print(" PIT : add_pit_entry : Gonna raiseEvent for PitTableModification, commented for now : So no event")
+    #self.raiseEvent(FibTableModification(added=[entry]))
 
   def remove_entry(self, entry, reason=None):
     assert isinstance(entry, PitTableEntry)
@@ -667,7 +672,7 @@ class PitTable(EventMixin):
     self.raiseEvent(PitTableModification(removed=[entry], reason=reason))
 
   def matching_entries(self, match, priority=0, strict=False, out_port=None):
-    print(" NAME TABLE : matching_entries function : Entries for the given match")
+    print(" PIT : matching_entries function : Entries for the given match")
     entry_match = lambda e: e.is_matched_by(match, priority, strict, out_port)
     return [entry for entry in self._table if entry_match(entry)]
 
@@ -721,29 +726,43 @@ class PitTable(EventMixin):
 
   def remove_matching_entries(self, match, priority=0, strict=False,
                               out_port=None, reason=None):
-    print(" PIT TABLE : remove_matching_entries")
+    print(" PIT : remove_matching_entries")
     remove_flows = self.matching_entries(match, priority, strict, out_port)
     self._remove_specific_entries(remove_flows, reason=reason)
     return remove_flows
 
   def pit_entry_for_packet(self, packet, in_port):
     # Jeeva : Check for PIT
-    print("PIT Table : In pit_entry_for_packet function")
+    print(" PIT : In pit_entry_for_packet function")
     packet_match = ofp_match.from_packet(packet, in_port, spec_frags=True)
     interest_name = packet_match.interest_name
 
     for entry in self._table:
-      print(" PIT TABLE, checking each entry in the PIT table :", entry, "\n")
-      if entry.prefix == interest_name :
-        print (" PIT entry Found: Adding the input port to the list")
+      print(" PIT : checking each entry in the PIT table :", entry, "\n")
+      if entry.match.interest_name == interest_name :
+        print (" PIT : Entry Found: Adding the input port to the list")
         if in_port not in entry.ports :
           entry.ports.append(in_port)
         else:
-          print("In port is already in the ports list")
-        print (" PIT entry ports :", entry.ports)
+          print(" PIT : in_port is already in the ports list")
+        print (" PIT : Ports list :", entry.ports)
         return True
 
     return False
+
+  def fetch_faces_from_pit_entry(self,interest_name):
+    #Jeeva : check PIT and retirn the ports
+    print(" PIT : In fetch_faces_from_pit_entry function")
+    packet_match = ofp_match(interest_name=interest_name)
+    interest_name = packet_match.interest_name
+
+    for entry in self._table:
+      print(" PIT : checking each entry in the PIT table :", entry, "\n")
+      if entry.match.interest_name == interest_name:
+        print (" PIT : Entry Found: Returning the ports")
+        return entry.ports
+
+    return None
 
   #Jeeva : This function may be useful later
   def entry_for_packet(self, packet, in_port):
@@ -760,29 +779,29 @@ class PitTable(EventMixin):
       using the packet match created in the previous step
     """
 
-    print (" PIT TABLE : entry_for_packet funtion")
+    print (" PIT : entry_for_packet funtion")
 
     packet_match = ofp_match.from_packet(packet, in_port, spec_frags=True)
 
-    print (" PIT TABLE : Created a match with the given packet")
+    print (" PIT : Created a match with the given packet")
 
     if (packet_match.interest_name == "newnewnew"):
-      entry = NameTableEntry(priority=5, match=packet_match,
+      entry = FibTableEntry(priority=5, match=packet_match,
                              actions=[ofp_action_output(port=3), ofp_action_output(port=4)])
       print (
-      " PIT TABLE : Created a sample entry to match with the packet(newnewnew) : using the packet match itself as a hack")
+      " PIT : Created a sample entry to match with the packet(newnewnew) : using the packet match itself as a hack")
       self.add_entry(entry)
     else:
-      print (" PIT TABLE : Sample Entry is not created")
+      print (" PIT : Sample Entry is not created")
 
-    print(" \n\n NAME TABLE, Entire Table before checking for match with the packet:", self._table)
+    print(" \n\n PIT : Entire Table before checking for match with the packet:", self._table)
     print("\n\n")
     # for entry in self._table:
     # print(" NAME TABLE, match in self.table :", entry.match)
 
     # Jeeva : Add these lines later
     for entry in self._table:
-      print(" PIT TABLE, checking each entry  :", entry, "\n")
+      print(" PIT : checking each entry  :", entry, "\n")
       if entry.match.matches_with_wildcards(packet_match,
                                             consider_other_wildcards=False):
         return entry
@@ -803,7 +822,7 @@ class PitTable(EventMixin):
     # NOTE: We could improve performance by doing a binary search to find the
     #      right priority entries.
 
-    #Jeeva : Check is the same prefix is entered twice in the table
+    #Jeeva : Check is the same match is entered twice in the table
 
     return False
 
@@ -820,7 +839,7 @@ class ContentStoreEntry(object):
   """
 
   def __init__(self, priority=OFP_DEFAULT_PRIORITY, cookie=0, idle_timeout=0,
-               hard_timeout=0, flags=0, prefix="", data="", now=None):
+               hard_timeout=0, flags=0, match=ofp_match(), data="", now=None):
     """
     Initialize name table entry
     """
@@ -834,12 +853,8 @@ class ContentStoreEntry(object):
     self.idle_timeout = idle_timeout
     self.hard_timeout = hard_timeout
     self.flags = flags
-    #self.match = match
-    #self.actions = actions
-    self.prefix = prefix
+    self.match = match
     self.data = data
-    #self.buffer_id = buffer_id
-    # self.faces = {1:2,2:3,3:4}
 
   @staticmethod
   def from_flow_mod(flow_mod):
@@ -848,7 +863,7 @@ class ContentStoreEntry(object):
                           idle_timeout=flow_mod.idle_timeout,
                           hard_timeout=flow_mod.hard_timeout,
                           flags=flow_mod.flags,
-                          prefix=flow_mod.prefix,
+                          match=flow_mod.match,
                           data=flow_mod.data
                           )
 
@@ -856,11 +871,10 @@ class ContentStoreEntry(object):
     if flags is None: flags = self.flags
     return ofp_flow_mod(priority=self.priority,
                         cookie=self.cookie,
-                        prefix=self.prefix,
+                        match=self.match,
                         idle_timeout=self.idle_timeout,
                         hard_timeout=self.hard_timeout,
                         data=self.data,
-                        #buffer_id=self.buffer_id,
                         flags=flags, **kw)
 
   @property
@@ -924,7 +938,7 @@ class ContentStoreEntry(object):
     return type(self).__name__ + "\n  " + self.show()
 
   def __repr__(self):
-    return "PitTableEntry(" + self.show() + ")"
+    return "ContentStoreEntry(" + self.show() + ")"
 
   def show(self):
     outstr = ''
@@ -932,15 +946,14 @@ class ContentStoreEntry(object):
     outstr += "cookie=%x, " % self.cookie
     outstr += "idle_timeout=%d, " % self.idle_timeout
     outstr += "hard_timeout=%d, " % self.hard_timeout
-    outstr += "prefix=%s, " % self.prefix
+    outstr += "match=%s, " % self.match
     outstr += "data=%s, " % repr(self.data)
-    #outstr += "buffer_id=%s" % str(self.buffer_id)
     return outstr
 
   def flow_stats(self, now=None):
     if now is None: now = time.time()
     dur_nsec, dur_sec = math.modf(now - self.created)
-    return ofp_flow_stats(prefix=self.prefix,
+    return ofp_flow_stats(match=self.match,
                           duration_sec=int(dur_sec),
                           duration_nsec=int(dur_nsec * 1e9),
                           priority=self.priority,
@@ -956,7 +969,7 @@ class ContentStoreEntry(object):
     if now is None: now = time.time()
     dur_nsec, dur_sec = math.modf(now - self.created)
     fr = ofp_flow_removed()
-    fr.prefix = self.prefix
+    fr.match = self.match
     fr.cookie = self.cookie
     fr.priority = self.priority
     fr.reason = reason
@@ -1003,18 +1016,19 @@ class ContentStore(EventMixin):
     print("Content Store : initContent Store")
 
     #Entry 1
-    entry = PitTableEntry(prefix="newnewnew", ports=[4])
-    print (
-        " PIT TABLE : Created a sample entry to match with the packet(newnewnew) : using the packet match itself as a "
-        "hack ports : 1")
+    match=ofp_match(interest_name="/test/contentstorematch")
+    entry = ContentStoreEntry(match=match, data="$$$$ - Data for the prefix "
+                                                                     "/test/contentstorematch - $$$$")
+    print (" Content Store: Adding content store entry for the prefix : /test/contentstorematch")
     self.add_entry(entry)
 
-    #Entry 2
-    entry = PitTableEntry(prefix="oldoldold", ports=[2, 3])
-    print (
-        " PIT TABLE : Created a sample entry to match with the packet(oldoldold) : using the packet match itself as a "
-        "hack ports : 2, 3")
+    #Entry 2 - Commented for now to check CS flow for 1st test
+    '''
+    entry = ContentStoreEntry(prefix="/test/pitmatch", data="**** - Data for the prefix oldoldold - ****")
+    print (" Content Store : Adding content store entry")
     self.add_entry(entry)
+    '''
+
 
   def _dirty(self):
     """
@@ -1032,10 +1046,10 @@ class ContentStore(EventMixin):
 
   def add_entry(self, entry):
 
-    print("PIT TABLE : Pit Entry to be added :", entry)
-    print("PIT TABLE : Pit table entry :", PitTableEntry)
-    assert isinstance(entry, PitTableEntry)
-    print(" PIT TABLE : add_pit_entry")
+    print(" Content Store : Content Store Entry to be added :", entry)
+    print(" Content Store : Content Store entry :", ContentStoreEntry)
+    assert isinstance(entry, ContentStoreEntry)
+    print(" Content Store : add_content_store_entry")
     print(" ----------------------\n\n")
 
     table = self._table
@@ -1050,16 +1064,17 @@ class ContentStore(EventMixin):
         continue
       low = middle + 1
     '''
-    print(" PIT TABLE : Table before adding the new pit entry :", table)
+    print(" Content Store  : Table before adding the new content store entry :", table)
     print("\n\n")
     table.insert(low, entry)
 
     self._dirty()
 
-    print(" PIT TABLE : Table after adding the new pit entry :", table)
+    print(" Content Store  : Table after adding the new content store entry :", table)
     print(" ----------------------\n\n")
-    print(" PIT TABLE : add_pit_entry : Gonna raiseEvent for PitTableModification, commented for now : So no event")
-    #self.raiseEvent(NameTableModification(added=[entry]))
+    print(" Content Store  : add_content_store_entry : Gonna raiseEvent for ContentStoreModification, commented for now"
+          " : So no event")
+    #self.raiseEvent(FibTableModification(added=[entry]))
 
   def remove_entry(self, entry, reason=None):
     assert isinstance(entry, PitTableEntry)
@@ -1068,7 +1083,7 @@ class ContentStore(EventMixin):
     self.raiseEvent(PitTableModification(removed=[entry], reason=reason))
 
   def matching_entries(self, match, priority=0, strict=False, out_port=None):
-    print(" NAME TABLE : matching_entries function : Entries for the given match")
+    print(" Content Store  : matching_entries function : Entries for the given match")
     entry_match = lambda e: e.is_matched_by(match, priority, strict, out_port)
     return [entry for entry in self._table if entry_match(entry)]
 
@@ -1122,28 +1137,23 @@ class ContentStore(EventMixin):
 
   def remove_matching_entries(self, match, priority=0, strict=False,
                               out_port=None, reason=None):
-    print(" PIT TABLE : remove_matching_entries")
+    print(" Content Store : remove_matching_entries")
     remove_flows = self.matching_entries(match, priority, strict, out_port)
     self._remove_specific_entries(remove_flows, reason=reason)
     return remove_flows
 
-  def pit_entry_for_packet(self, packet, in_port):
+  def content_store_entry_for_packet(self, packet, in_port):
     # Jeeva : Check for PIT
-    print("PIT Table : In pit_entry_for_packet function")
+    print(" Content Store : In content_store_entry_for_packet function")
     packet_match = ofp_match.from_packet(packet, in_port, spec_frags=True)
     interest_name = packet_match.interest_name
 
     for entry in self._table:
-      print(" PIT TABLE, checking each entry in the PIT table :", entry, "\n")
-      if entry.prefix == interest_name :
-        print (" PIT entry Found: Adding the input port to the list")
-        if in_port not in entry.ports :
-          entry.ports.append(in_port)
-        else:
-          print("In port is already in the ports list")
-        print (" PIT entry ports :", entry.ports)
+      print(" Content Store : checking each entry in the content store table :", entry, "\n")
+      if entry.match.interest_name == interest_name :
+        print (" Content Store entry Found : Have to send the data to the corresponding requester , which is in_port")
         return True
-
+    print (" No content store entry found : Have to check in PIT for pending interests now")
     return False
 
   #Jeeva : This function may be useful later
@@ -1161,29 +1171,29 @@ class ContentStore(EventMixin):
       using the packet match created in the previous step
     """
 
-    print (" PIT TABLE : entry_for_packet funtion")
+    print (" Content Store : entry_for_packet funtion")
 
     packet_match = ofp_match.from_packet(packet, in_port, spec_frags=True)
 
-    print (" PIT TABLE : Created a match with the given packet")
+    print (" Content Store : Created a match with the given packet")
 
     if (packet_match.interest_name == "newnewnew"):
-      entry = NameTableEntry(priority=5, match=packet_match,
+      entry = FibTableEntry(priority=5, match=packet_match,
                              actions=[ofp_action_output(port=3), ofp_action_output(port=4)])
       print (
-      " PIT TABLE : Created a sample entry to match with the packet(newnewnew) : using the packet match itself as a hack")
+      " Content Store : Created a sample entry to match with the packet(newnewnew) : using the packet match itself as a hack")
       self.add_entry(entry)
     else:
-      print (" PIT TABLE : Sample Entry is not created")
+      print (" Content Store : Sample Entry is not created")
 
-    print(" \n\n NAME TABLE, Entire Table before checking for match with the packet:", self._table)
+    print(" \n\n Content Store, Entire Table before checking for match with the packet:", self._table)
     print("\n\n")
     # for entry in self._table:
     # print(" NAME TABLE, match in self.table :", entry.match)
 
     # Jeeva : Add these lines later
     for entry in self._table:
-      print(" PIT TABLE, checking each entry  :", entry, "\n")
+      print(" Content Store, checking each entry  :", entry, "\n")
       if entry.match.matches_with_wildcards(packet_match,
                                             consider_other_wildcards=False):
         return entry

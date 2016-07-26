@@ -161,6 +161,7 @@ def _do_imports (components):
 
 
 def _do_launch (argv):
+  print(" BOOT : In _do_launch")
   component_order = []
   components = {}
 
@@ -511,7 +512,9 @@ def boot (argv = None):
     argv = pre + "py --disable".split() + argv
 
     if _do_launch(argv):
+      print(" BOOT : Gonna call _post_startup")
       _post_startup()
+      print(" BOOT : Gonna up the core component")
       core.goUp()
     else:
       #return

@@ -38,9 +38,9 @@ import select
 # List where the index is an OpenFlow message type (OFPT_xxx), and
 # the values are unpack functions that unpack the wire format of that
 # type into a message object.
-print("OF 01 : Gonna call make_type_to_unpacker_table ")
+#print("OF 01 : Gonna call make_type_to_unpacker_table ")
 unpackers = make_type_to_unpacker_table()
-print("OF 01 : After unpacking using make_type_to_unpacker_table : ", unpackers)
+#print("OF 01 : After unpacking using make_type_to_unpacker_table : ", unpackers)
 
 try:
   PIPE_BUF = select.PIPE_BUF
@@ -125,7 +125,7 @@ def handle_FEATURES_REPLY (con, msg):
       con.err("failed connect")
       con.disconnect()
     else:
-      con.info("connected")
+      con.info("connected : TEST TEST TEST")
       con.connect_time = time.time()
       e = con.ofnexus.raiseEventNoErrors(ConnectionUp, con, msg)
       if e is None or e.halt != True:
@@ -614,7 +614,7 @@ class Connection (EventMixin):
 
     self.ofnexus = _dummyOFNexus
     self.sock = sock
-    print(" Jeeva controller , connection to switch :", self.sock.getpeername())
+    print(" OF : Connection init method : Connection to switch :", self.sock.getpeername())
     self.buf = ''
     Connection.ID += 1
     self.ID = Connection.ID
@@ -627,6 +627,7 @@ class Connection (EventMixin):
     self.connect_time = None
     self.idle_time = time.time()
 
+    print(" OF 01 : Controller sending Hello message to switch ")
     self.send(of.ofp_hello())
 
     self.original_ports = PortCollection()
@@ -635,6 +636,8 @@ class Connection (EventMixin):
 
     #TODO: set a time that makes sure we actually establish a connection by
     #      some timeout
+
+    print(" OF 01 : Connection init method END")
 
   @property
   def eth_addr (self):

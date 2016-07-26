@@ -45,7 +45,8 @@ class Tutorial (object):
     # Use this table to keep track of which ethernet address is on
     # which switch port (keys are MACs, values are ports).
     self.mac_to_port = {}
-    self.name_table = {'demotest1':8888,'demotest2':9999,'icndemotest':3, 'newnewnew':4, 'oldoldold':4}
+    self.name_table = {'/test/contentstorematch':4,'/test/pitmatch':3,'/test/fibmatch':2,
+                       '/test/nomatch':1}
 
 
   def resend_packet (self, packet_in, out_port):
@@ -94,18 +95,18 @@ class Tutorial (object):
     #Jeeva : event.data or packet.raw will give the data payload
     interest = packet.raw
     interest_name = interest.split(":")[1]
-    print("Interest name : ", interest_name)
-    print("Name Dictionary :", self.name_table)
+    print("OF_TUTORIAL : Interest name : ", interest_name)
+    print("OF_TUTORIAL : Name Dictionary :", self.name_table)
     port = self.name_table[interest_name]
-    print("Port to send :", port)
+    print("OF_TUTORIAL : Port to send :", port)
 
     #Jeeva : push a flow mod message
 
     print("OF_TUTORIAL : Sending Flow Mod message")
     msg = of.ofp_flow_mod()
     msg.match = of.ofp_match.from_packet(packet)
-    msg.idle_timeout = 10
-    msg.hard_timeout = 30
+    msg.idle_timeout = 50
+    msg.hard_timeout = 50
     msg.actions.append(of.ofp_action_output(port=port))
     #msg.data = event.ofp
     self.connection.send(msg)
@@ -145,9 +146,9 @@ def launch ():
   """
   Starts the component
   """
-  log.debug("OF_TUTORIAL : Launch Test 2")
+  log.debug("OF_TUTORIAL : Launch Test")
   def start_switch (event):
-    log.debug("Controlling %s" % (event.connection,))
+    log.debug("OF_TUTORIAL : Controlling %s" % (event.connection,))
     log.debug("OF_TUTORIAL : event details : %s" % (event.source))
     Tutorial(event.connection)
 

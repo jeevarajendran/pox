@@ -269,7 +269,7 @@ ofp_action_type_rev_map = {}
 ofp_action_type_map = {}
 
 def openflow_action (action_type, type_val):
-  print(" ++ Setting openflow_action")
+  print(" ++ Setting openflow_action :", action_type )
   ofp_action_type_rev_map[action_type] = type_val
   ofp_action_type_map[type_val] = action_type
   def f (c):
@@ -1484,6 +1484,57 @@ class ofp_action_generic (ofp_action_base):
     outstr = ''
     outstr += prefix + 'type: ' + str(self.type) + '\n'
     outstr += prefix + 'len: ' + str(len(self)) + '\n'
+    return outstr
+
+#Jeeva : Action to add the entry into PIT
+@openflow_action('OFPAT_ADDPIT', 999)
+class ofp_action_addpit (ofp_action_base):
+  def __init__ (self, **kw):
+    print(" NAME LIB : ofp_action_add_pit : self :", self)
+    print(" NAME LIB : ofp_action_add_pit kw :", kw)
+    self.ports = None # Purposely bad -- require specification
+    self.interest_name = ""
+    #self.max_len = 0xffFF
+    print(" NAME LIB : ofp_action_add_pit : self.port before calling initHelper :", self.ports)
+    initHelper(self, kw)
+    print(" NAME LIB : ofp_action_add_pit : self.port after calling initHelper :", self.ports)
+
+  def pack (self):
+    if self.port != OFPP_CONTROLLER:
+      self.max_len = 0
+
+    assert self._assert()
+
+    packed = b""
+    packed += struct.pack("!HHHH", self.type, len(self), self.port,
+                          self.max_len)
+    return packed
+
+  def unpack (self, raw, offset=0):
+    _offset = offset
+    offset,(self.type, length, self.port, self.max_len) = \
+        _unpack("!HHHH", raw, offset)
+    assert offset - _offset == len(self)
+    return offset
+
+  @staticmethod
+  def __len__ ():
+    return 8
+
+  def __eq__ (self, other):
+    if type(self) != type(other): return False
+    if self.type != other.type: return False
+    if len(self) != len(other): return False
+    if self.port != other.port: return False
+    if self.max_len != other.max_len: return False
+    return True
+
+  def show (self, prefix=''):
+    outstr = ''
+    outstr += prefix + 'type: ' + str(self.type) + '\n'
+    outstr += prefix + 'len: ' + str(len(self)) + '\n'
+    outstr += prefix + 'port: ' + str(self.port) + '\n'
+    outstr += prefix + 'max_len: ' + str(self.max_len) + '\n'
     return outstr
 
 
@@ -4342,7 +4393,9 @@ def _init ():
   return
   """
   maps = []
-  print(" $$$$$$$$$$$$$$$ globals()", globals())
+  #Jeeva : All the global variables and methods are added to globals() method , especially all the maps and
+  #reverse maps are constructed here
+  #print(" $$$$$$$$$$$$$$$ globals()", globals())
   for k,v in globals().iteritems():
     if (k.startswith("ofp_") and k.endswith("_rev_map")
         and type(v) == dict):
