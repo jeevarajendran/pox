@@ -19,7 +19,7 @@ each pair of L2 addresses.
 
 # These next two imports are common POX convention
 from pox.core import core
-import pox.openflow.libopenflow_01 as of
+import pox.openflow.namelibopenflow_01 as of
 
 
 # Even a simple usage of the logger is much nicer than print!

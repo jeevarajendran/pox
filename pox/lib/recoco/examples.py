@@ -19,7 +19,7 @@ they will save time for developers getting used to the POX environment.
 """
 
 from pox.core import core
-import pox.openflow.libopenflow_01 as of
+import pox.openflow.namelibopenflow_01 as of
 from pox.lib.revent import *
 from pox.lib.recoco import *
 

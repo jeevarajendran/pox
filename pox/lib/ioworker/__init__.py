@@ -82,6 +82,7 @@ class IOWorker (object):
     loop._workers.discard(self)
 
   def _try_connect (self, loop):
+    print("Try connect")
     if not self._connecting: return False
     self._connecting = False
     try:
@@ -123,9 +124,12 @@ class IOWorker (object):
       loop._workers.discard(self)
 
   def _do_send (self, loop):
+    print("Do send")
+    print("Socket :", self.socket)
     if self._connecting and self._try_connect(loop): return
     try:
       if len(self.send_buf):
+        print(" Trying to send :", self.send_buf)
         l = self.socket.send(self.send_buf)
         if l > 0:
           self._consume_send_buf(l)
@@ -157,6 +161,7 @@ class IOWorker (object):
     Handler to call when connected
     """
     # Not sure if this is a good idea, but it might be...
+    print("Connect handler")
     if self.connect_handler is not None or callback is not None:
       log.debug("Resetting connect_handler on %s?", self)
     if callback is None: callback = _dummy_handler
@@ -181,6 +186,7 @@ class IOWorker (object):
 
   @property
   def rx_handler (self):
+    print("Rx handler property")
     if self._custom_rx_handler is _dummy_handler:
       return None
     return self._custom_rx_handler
@@ -191,16 +197,19 @@ class IOWorker (object):
     Handler to call when data is available to read
     """
     # Not sure if this is a good idea, but it might be...
+    print("rx_handler setter")
     if self.rx_handler is not None or callback is not None:
       log.debug("Resetting rx_handler on %s?", self)
     if callback is None: callback = _dummy_handler
     self._custom_rx_handler = callback
 
   def send_fast (self, data):
+    print("send Fast")
     return self.send(data)
 
   def send (self, data):
     """ Send data.  Fire and forget. """
+    print(" Send in IOWOrker")
     assert assert_type("data", data, [bytes], none_ok=False)
     self.send_buf += data
 
@@ -237,11 +246,13 @@ class IOWorker (object):
   @property
   def _ready_to_send (self):
     # called by Select loop
+    print(" Ready to send property")
     return len(self.send_buf) > 0 or self._connecting
 
   def _consume_send_buf (self, l):
     # Throw out the first l bytes of the send buffer
     # Called by Select loop
+    print("consume send buf")
     assert(len(self.send_buf)>=l)
     self.send_buf = self.send_buf[l:]
 
@@ -305,6 +316,7 @@ class RecocoIOWorker (IOWorker):
     self.pinger.ping()
 
   def send (self, data):
+    print(" In Recoco IO worker send function : IOWorker Data :", data)
     IOWorker.send(self, data)
     self.pinger.ping()
 

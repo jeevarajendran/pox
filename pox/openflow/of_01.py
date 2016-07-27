@@ -64,6 +64,13 @@ from errno import EAGAIN, ECONNRESET, EADDRINUSE, EADDRNOTAVAIL
 
 import traceback
 
+#Jeeva : handler for CS_FULL
+
+def handle_CS_FULL (con): #A
+  print("************* Handling CS Full")
+  e = con.ofnexus.raiseEventNoErrors(CsFull, con)
+  if e is None or e.halt != True:
+    con.raiseEventNoErrors(CsFull, con)
 
 def handle_HELLO (con, msg): #S
   #con.msg("HELLO wire protocol " + hex(msg.version))
@@ -267,6 +274,8 @@ handlerMap = {
   of.OFPT_STATS_REPLY : handle_STATS_REPLY,
   of.OFPT_FLOW_REMOVED : handle_FLOW_REMOVED,
   of.OFPT_VENDOR : handle_VENDOR,
+  #Jeeva
+  of.OFPT_CS_FULL : handle_CS_FULL,
 }
 
 statsHandlerMap = {
@@ -593,6 +602,7 @@ class Connection (EventMixin):
     PortStatsReceived,
     QueueStatsReceived,
     FlowRemoved,
+    CsFull,
   ])
 
   # Globally unique identifier for the Connection instance
@@ -734,6 +744,9 @@ class Connection (EventMixin):
     """
     try:
       d = self.sock.recv(2048)
+      print("\n\n\n\n\n")
+      print("$$$$$$$$ RECEIVED data : ", d)
+
     except:
       return False
     if len(d) == 0:
@@ -741,6 +754,7 @@ class Connection (EventMixin):
     self.buf += d
     buf_len = len(self.buf)
 
+    print("$$$$$$$$ Buf len = ", buf_len)
 
     offset = 0
     while buf_len - offset >= 8: # 8 bytes is minimum OF message size
@@ -750,25 +764,43 @@ class Connection (EventMixin):
 
       ofp_type = ord(self.buf[offset+1])
 
+      print("$$$$$$$$ ofp_type : ", ofp_type)
+
       if ord(self.buf[offset]) != of.OFP_VERSION:
         if ofp_type == of.OFPT_HELLO:
           # We let this through and hope the other side switches down.
           pass
         else:
+          print(" BAD OpenFlow Version")
           log.warning("Bad OpenFlow version (0x%02x) on connection %s"
                       % (ord(self.buf[offset]), self))
           return False # Throw connection away
 
       msg_length = ord(self.buf[offset+2]) << 8 | ord(self.buf[offset+3])
+      print(" $$$$$$$$ msg_length :", msg_length)
+      print(" $$$$$$$$ offset :", offset)
+      print(" $$$$$$$$ Difference :", buf_len - offset)
 
-      if buf_len - offset < msg_length: break
+      if buf_len - offset < msg_length:
+        #Jeeva
+        if(ofp_type ==22):
+          print ("$$$$$$ CS Full Ofp type")
+          h = handlers[ofp_type]
+          print ("$$$$$$ Handler :", h)
+          h(self)
+        break
 
       new_offset,msg = unpackers[ofp_type](self.buf, offset)
+      print(" $$$$$$$$ new_offset :", new_offset)
+      print(" $$$$$$$$ msg :", msg)
       assert new_offset - offset == msg_length
       offset = new_offset
 
       try:
+        print ("$$$$$$ Gonna try for handler")
         h = handlers[ofp_type]
+        print ("$$$$$$ Handler :", h)
+        print("\n\n\n\n\n")
         h(self, msg)
       except:
         log.exception("%s: Exception while handling OpenFlow message:\n" +

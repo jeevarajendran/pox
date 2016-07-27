@@ -103,6 +103,7 @@ def _read (data, offset, length):
   if (len(data)-offset) < length:
     raise UnderrunError("wanted %s bytes but only have %s"
                         % (length, len(data)-offset))
+  print(data[offset:offset+length])
   return (offset+length, data[offset:offset+length])
 
 def _unpack (fmt, data, offset):
@@ -198,6 +199,8 @@ class ofp_base (object):
     """
     o = cls()
     r,length = o.unpack(raw, offset)
+    print("r-offset :", r-offset)
+    print("length :", length)
     assert (r-offset) == length, o
     return (r, o)
 
@@ -526,6 +529,13 @@ ofp_flow_wildcards_rev_map = {
   'OFPFW_DL_VLAN_PCP'  : 1048576,
   'OFPFW_NW_TOS'       : 1<<21,
 }
+
+#Jeeva
+
+ofp_content_store_rev_map = {
+  'OFPCS_FULL' : 0,
+}
+
 
 OFPFW_NW_DST_BITS      = 6
 OFPFW_NW_SRC_BITS      = 6
@@ -1487,7 +1497,7 @@ class ofp_action_generic (ofp_action_base):
     return outstr
 
 #Jeeva : Action to add the entry into PIT
-@openflow_action('OFPAT_ADDPIT', 999)
+@openflow_action('OFPAT_ADDPIT', 900)
 class ofp_action_addpit (ofp_action_base):
   def __init__ (self, **kw):
     print(" NAME LIB : ofp_action_add_pit : self :", self)
@@ -2117,6 +2127,8 @@ class ofp_action_vendor_generic (ofp_action_base):
 
 
 #3. Controller-to-Switch Messages
+
+
 
 ##3.1 Handshake
 @openflow_s_message("OFPT_FEATURES_REPLY", 6,
@@ -3716,6 +3728,166 @@ class ofp_barrier_request (ofp_header):
 
 
 #4 Asynchronous Messages
+
+#Jeeva : Message to send when the CS is FULL
+
+
+@openflow_s_message("OFPT_CS_FULL", 22)
+class ofp_cs_full (ofp_header):
+  _MIN_LENGTH = 18
+  def __init__ (self, **kw):
+    ofp_header.__init__(self)
+
+    #self.in_port = OFPP_NONE
+    #self._buffer_id = NO_BUFFER
+    #self.reason = 0
+    #self.data = None
+    #self._total_len = None
+
+    #if 'total_len' in kw:
+    #  self._total_len = kw.pop('total_len')
+
+    initHelper(self, kw)
+
+  def pack (self):
+    assert self._assert()
+
+    packed = b""
+    packed += ofp_header.pack(self)
+    #packed += struct.pack("!HH", self.type, self.code)
+    #packed += self.data
+    return packed
+
+  def unpack (self, raw, offset=0):
+    offset,length = self._unpack_header(raw, offset)
+    #offset,(self.type, self.code) = _unpack("!HH", raw, offset)
+    #offset,self.data = _read(raw, offset, length - 12)
+    assert length == len(self)
+    return offset,length
+
+  def __len__ (self):
+    return 12 #+ len(self.data)
+
+  def __eq__ (self, other):
+    if type(self) != type(other): return False
+    if not ofp_header.__eq__(self, other): return False
+    #if self.type != other.type: return False
+    #if self.code != other.code: return False
+    #if self.data != other.data: return False
+    return True
+
+  def show (self, prefix=''):
+    outstr = ''
+    outstr += prefix + 'header: \n'
+    outstr += ofp_header.show(self, prefix + '  ')
+    #outstr += prefix + 'buffer_id: ' + str(self.buffer_id) + '\n'
+    #outstr += prefix + 'total_len: ' + str(self._total_len) + '\n'
+    #outstr += prefix + 'in_port: ' + str(self.in_port) + '\n'
+    #outstr += prefix + 'reason: ' + str(self.reason) + '\n'
+    #outstr += prefix + 'data: ' + str(self.data) + '\n'
+    return outstr
+
+
+#Jeeva
+#Controller message to add an content store entry
+
+@openflow_c_message("OFPT_ADD_CS_ENTRY", 23)
+class ofp_add_cs_entry (ofp_header):
+  _MIN_LENGTH = 72
+  def __init__ (self, **kw):
+    ofp_header.__init__(self)
+    if 'match' in kw:
+      self.match = None
+    else:
+      self.match = ofp_match()
+    #self.cookie = 0
+    #self.command = OFPFC_ADD
+    #self.idle_timeout = 0
+    #self.hard_timeout = 0
+    #self.priority = OFP_DEFAULT_PRIORITY
+    #self._buffer_id = NO_BUFFER
+    #self.out_port = OFPP_NONE
+    #self.flags = 0
+    #self.actions = []
+    self.data = None # Not in the spec!  Special magic!  Can be packet_in.
+
+    initHelper(self, kw)
+
+  def _validate (self):
+    if not isinstance(self.match, ofp_match):
+      return "match is not class ofp_match"
+    return None
+
+  def pack (self):
+    print("++++++++++++++++ In Pack method")
+    assert self._assert()
+
+    packed = b""
+    packed += ofp_header.pack(self)
+    packed += self.match.pack()
+    packed += self.data
+    #packed += struct.pack("!H", self.port_no)
+    #if isinstance(self.hw_addr, bytes):
+      #packed += self.hw_addr
+    #else:
+      #packed += self.hw_addr.toRaw()
+    #packed += struct.pack("!BB", self.match, self.data)
+    print (" +++++++++++ Length (packed ) :" , len(packed))
+    return packed
+
+  def unpack (self, raw, offset=0):
+    print("IN unpack method")
+    offset,length = self._unpack_header(raw, offset)
+    offset= self.match.unpack(raw, offset)
+    print(" length after match :", length)
+    print(" offset after match :", offset)
+    offset, self.data = _read(raw, offset, length - offset ) #(length-offset)- Subtract the previously read bytes
+    print(" Data after reading : ", self.data)
+    #offset,length2 = _read(raw, offset, length-len(self.data))
+    #offset, self.data = _read(raw, offset,length2)
+    #offset,(self.port_no,) = _unpack("!H", raw, offset)
+    #offset,self.hw_addr = _readether(raw, offset)
+    #offset,(self.match, self.data) = \
+        #_unpack("!PP", raw, offset)
+    #ffset = _skip(raw, offset, 4)
+    print("length=",length)
+    print("len(self)=",len(self))
+    assert length == len(self)
+    return offset,length
+
+  def __len__ (self):
+    l = 8 + len(ofp_match) + len(self.data)
+    print("Length in __len__ :", l)
+    return l
+
+  def __eq__ (self, other):
+    if type(self) != type(other): return False
+    if not ofp_header.__eq__(self, other): return False
+    if self.match != other.match: return False
+    #if self.cookie != other.cookie: return False
+    #if self.command != other.command: return False
+    #if self.idle_timeout != other.idle_timeout: return False
+    #if self.hard_timeout != other.hard_timeout: return False
+    #if self.priority != other.priority: return False
+    #if self.flags != other.flags: return False
+    if self.data != other.data: return False
+    return True
+
+  def show (self, prefix=''):
+    outstr = ''
+    outstr += prefix + 'header: \n'
+    outstr += ofp_header.show(self, prefix + '  ')
+    outstr += prefix + 'match: \n'
+    outstr += self.match.show(prefix + '  ')
+    #outstr += prefix + 'cookie: ' + str(self.cookie) + '\n'
+    #outstr += prefix + 'command: ' + str(self.command) + '\n'
+    #o#utstr += prefix + 'idle_timeout: ' + str(self.idle_timeout) + '\n'
+    #outstr += prefix + 'hard_timeout: ' + str(self.hard_timeout) + '\n'
+    #outstr += prefix + 'priority: ' + str(self.priority) + '\n'
+    outstr += prefix + 'Data: ' + str(self.data) + '\n'
+    return outstr
+
+
 @openflow_s_message("OFPT_PACKET_IN", 10)
 class ofp_packet_in (ofp_header):
   _MIN_LENGTH = 18

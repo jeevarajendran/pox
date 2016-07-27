@@ -31,7 +31,7 @@ of going about it.
 """
 
 from pox.core import core
-import pox.openflow.libopenflow_01 as of
+import pox.openflow.namelibopenflow_01 as of
 from pox.lib.revent import *
 from collections import defaultdict
 from pox.openflow.discovery import Discovery

@@ -48,6 +48,28 @@ class Tutorial (object):
     self.name_table = {'/test/contentstorematch':4,'/test/pitmatch':3,'/test/fibmatch':2,
                        '/test/nomatch':1}
 
+    self.content_dict = {'/test/data1':"BIGGGGGGGGGGGGGGGGGGGG DATAAAAAAAAAAAAAAAAAAAAA",'/test/data2':"Sample_data_2",'/test/data3':"Sample_data_3",
+                         '/test/data4': "Sample_data_4"}
+
+    self.init_content_store()
+
+  def init_content_store(self):
+    print("\n\n\n")
+    print(" %%%%%%%%%%%%%% initContentStore Function")
+    for k,v in self.content_dict.iteritems():
+      print(" %%%%%%%%%%%%%%%% Inside loop")
+      match=of.ofp_match(interest_name=k)
+      msg=of.ofp_add_cs_entry()
+
+      msg.match=match
+      msg.data=v
+      #msg.data_length=len(v)
+      #msg.idle_timeout = 66
+      #msg.hard_timeout = 66
+      print("\n\n")
+      print(" %%%%%%%%%%%%%% Gonna send content add message : msg", msg.show())
+      print("\n\n")
+      self.connection.send(msg)
 
   def resend_packet (self, packet_in, out_port):
     """
@@ -102,20 +124,26 @@ class Tutorial (object):
 
     #Jeeva : push a flow mod message
 
+
     print("OF_TUTORIAL : Sending Flow Mod message")
     msg = of.ofp_flow_mod()
     msg.match = of.ofp_match.from_packet(packet)
-    msg.idle_timeout = 50
-    msg.hard_timeout = 50
+    msg.idle_timeout = 77
+    msg.hard_timeout = 77
     msg.actions.append(of.ofp_action_output(port=port))
     #msg.data = event.ofp
     self.connection.send(msg)
     print("OF_TUTORIAL : Sent Flow Mod message")
 
+
     print("OF_TUTORIAL : Gonna resend the packet in the corressponding port through switch")
     self.resend_packet(packet, port) #Jeeva : Change from packet to packet_in later
 
-
+  def _handle_CsFull (self, event):
+    """
+    Handles packet in messages from the switch.
+    """
+    print(" ********* Handling CSFull Event ********************")
 
   def _handle_PacketIn (self, event):
     """

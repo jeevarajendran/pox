@@ -20,7 +20,7 @@ Use --show to show all packets.
 """
 
 from pox.core import core
-import pox.openflow.libopenflow_01 as of
+import pox.openflow.namelibopenflow_01 as of
 import pox.lib.packet as pkt
 from pox.lib.util import dpidToStr
 

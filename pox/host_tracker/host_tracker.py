@@ -50,7 +50,7 @@ from pox.lib.packet.arp import arp
 from pox.lib.recoco import Timer
 from pox.lib.revent import Event, EventHalt
 
-import pox.openflow.libopenflow_01 as of
+import pox.openflow.namelibopenflow_01 as of
 
 import pox.openflow.discovery as discovery
 

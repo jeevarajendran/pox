@@ -268,12 +268,16 @@ class EventMixin (object):
       if event not in self._eventMixin_handlers:
         print(" EventMixin : rasieEvent : No Handlers for the event : Return none")
         return None
+      print(" $$$$$$ EventMixin : rasieEvent : even in eventmixin handlers ")
       if len(self._eventMixin_handlers[event]) == 0:
         return None
+      print(" $$$$$$ EventMixin : rasieEvent : length of eventmixin handler is not 0")
       #print("check 5 ")
       classCall = True
       eventType = event
+      print(" $$$$$$ EventMixin : rasieEvent : eventType :", eventType)
       event = eventType(*args, **kw)
+      print(" $$$$$$ EventMixin : rasieEvent : event :", event)
       args = ()
       kw = {}
       if event.source is None:

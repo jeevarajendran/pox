@@ -1010,6 +1010,8 @@ class ContentStore(EventMixin):
 
     # Table is a list of TableEntry sorted by descending effective_priority.
     self._table = []
+    self._max_entries = 3
+    self._entries_counter = 0
     self.initContentStore()
 
   def initContentStore(self):
@@ -1067,6 +1069,8 @@ class ContentStore(EventMixin):
     print(" Content Store  : Table before adding the new content store entry :", table)
     print("\n\n")
     table.insert(low, entry)
+    self._entries_counter = self._entries_counter + 1
+    print(" ************ Content Store : Entries so far : ", self._entries_counter )
 
     self._dirty()
 

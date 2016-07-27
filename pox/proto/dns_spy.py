@@ -20,7 +20,7 @@ Similar to NOX's DNSSpy component, but with more features.
 """
 
 from pox.core import core
-import pox.openflow.libopenflow_01 as of
+import pox.openflow.namelibopenflow_01 as of
 import pox.lib.packet as pkt
 import pox.lib.packet.dns as pkt_dns
 

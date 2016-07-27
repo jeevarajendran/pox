@@ -28,7 +28,7 @@ Works with openflow.spanning_tree
 """
 
 from pox.core import core
-import pox.openflow.libopenflow_01 as of
+import pox.openflow.namelibopenflow_01 as of
 from pox.lib.revent import *
 from pox.lib.recoco import Timer
 from collections import defaultdict

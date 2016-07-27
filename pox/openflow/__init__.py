@@ -37,10 +37,22 @@ from pox.lib.revent import *
 print("OF INIT : revent import")
 from pox.lib.util import dpidToStr
 print("OF INIT : dpidToStr import ")
-import libopenflow_01 as of
+import namelibopenflow_01 as of
 print("OF INIT : libopenflow_01 import")
 from pox.lib.packet.ethernet import ethernet
 print("OF INIT : ethernet import")
+
+class CsFull(Event):
+  """
+  Event raised when the Content Store is Full
+  """
+
+  def __init__(self, connection):
+    Event.__init__(self)
+    self.connection = connection
+    self.dpid = connection.dpid
+    #self.ofp = ofp
+
 
 class ConnectionUp (Event):
   """

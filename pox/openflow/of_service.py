@@ -23,7 +23,7 @@ the webservice too.
 """
 
 from pox.core import core
-import pox.openflow.libopenflow_01 as of
+import pox.openflow.namelibopenflow_01 as of
 from pox.messenger import *
 import sys
 import traceback

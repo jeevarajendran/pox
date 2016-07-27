@@ -46,7 +46,7 @@ curl -i -X POST -d '{"method":"set_table","params":{"dpid":
 import sys
 from pox.lib.util import dpidToStr, strToDPID, fields_of
 from pox.core import core
-import pox.openflow.libopenflow_01 as of
+import pox.openflow.namelibopenflow_01 as of
 from pox.openflow.of_json import *
 from pox.web.jsonrpc import JSONRPCHandler, make_error
 import threading

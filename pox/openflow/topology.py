@@ -25,12 +25,12 @@ uses them to populate and manipulate Topology.
 import itertools
 
 from pox.lib.revent import *
-import libopenflow_01 as of
+import namelibopenflow_01 as of
 from pox.openflow import *
 from pox.core import core
 from pox.topology.topology import *
 from pox.openflow.discovery import *
-from pox.openflow.libopenflow_01 import xid_generator
+from pox.openflow.namelibopenflow_01 import xid_generator
 from pox.openflow.flow_table import FlowTable,FlowTableModification,TableEntry
 from pox.openflow.name_table import *
 from pox.lib.util import dpidToStr

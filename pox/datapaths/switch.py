@@ -325,7 +325,11 @@ class ICNSwitchBase (object):
                              ports = self.ports.values())
     self.send(msg)
 
-
+  def _rx_add_cs_entry (self, ofp, connection):
+    """
+    Handles flow mods
+    """
+    print("------------- Handling ADD CS ENTRY message in Switch---------------")
 
   def _rx_flow_mod (self, ofp, connection):
     """
@@ -499,6 +503,20 @@ class ICNSwitchBase (object):
     self.log.debug("Sending queue get config reply %s", reply)
     self.send(reply)
 
+  #Jeev
+  def send_cs_full (self):
+    """
+        Send CS_FULL
+    """
+    print(" *************** ICN Switch BASE: send_cs_full function ")
+
+    msg = ofp_cs_full(xid=0)
+
+    print(" *************** ICN Switch BASE : CS Full msg :", msg)
+
+    self.send(msg)
+
+
   def send_hello (self, force = False):
     """
     Send hello (once)
@@ -649,6 +667,15 @@ class ICNSwitchBase (object):
         print ("IN SWITCH : faces are returned :", ports)
         for port in ports:
           self._output_packet(packet, port, in_port)
+
+      #Add to content store
+      is_cs_full = self.content_store._entries_counter
+      print(" **************** : Content Store Status :", is_cs_full)
+      if is_cs_full == 1:
+        print (" *************** : Content Store is Full")
+        self.send_cs_full()
+        #Send the message
+
       #Jeeva : check for waiting faces in PIT
 
 
@@ -1296,13 +1323,17 @@ class OFConnection (object):
     way, you can just pass one of the OpenFlow objects from the OpenFlow
     library to it and get the expected result, for example.
     """
-    print(" OFConnection : send , send raw data to controller")
+    print(" OFConnection : send , send raw data to controller : Data", data)
     if type(data) is not bytes:
       if hasattr(data, 'pack'):
         data = data.pack()
+    print(" Data bytes :", data)
     self.io_worker.send(data)
+    print(" io_worker :", self.io_worker)
+    print(" OFConnection : Finished sending raw data to controller")
 
   def read (self, io_worker):
+    print(" %%%%%%%%%%%%%%%%%% Received Message from controller at switch Reading")
     #FIXME: Do we need to pass io_worker here?
     while True:
       message = io_worker.peek()
@@ -1311,31 +1342,45 @@ class OFConnection (object):
 
       # Parse head of OpenFlow message by hand
       ofp_version = ord(message[0])
+      print(" %%%%%%%%%%%% OFP_VERSION :", ofp_version)
       ofp_type = ord(message[1])
+      print(" %%%%%%%%%%%% OFP_type :", ofp_type)
 
       if ofp_version != OFP_VERSION:
+        print(" %%%%%%%%%%%% Bad ofp version")
         info = ofp_version
         r = self._error_handler(self.ERR_BAD_VERSION, info)
         if r is False: break
         continue
 
       message_length = ord(message[2]) << 8 | ord(message[3])
+      #print(" %%%%%%%%%%%% message-length :", message_length)
       if message_length > len(message):
+        #print(" %%%%%%%%%%%% message length > len(message) So breaking")
         break
 
-      if ofp_type >= 0 and ofp_type < len(self.unpackers):
+      #print(" %%%%%%%%%%%%%% Len of unpackers:", len(self.unpackers))
+      if ofp_type >= 0 and ofp_type <= len(self.unpackers):
+        #print(" %%%%%%%%%%%% check 1")
+        #print(" UNpackers :", self.unpackers)
         unpacker = self.unpackers[ofp_type]
       else:
+        #print(" %%%%%%%%%%%% check 2")
         unpacker = None
       if unpacker is None:
+        #print(" %%%%%%%%%%%% check 3")
         info = (ofp_type, message_length)
         r = self._error_handler(self.ERR_NO_UNPACKER, info)
         if r is False: break
         io_worker.consume_receive_buf(message_length)
         continue
 
+      #print(" %%%%%%%%%%%% check 4")
+      print("Gonna unpack the message :, message :", message)
       new_offset, msg_obj = self.unpackers[ofp_type](message, 0)
+      #print(" %%%%%%%%%%%% check 5")
       if new_offset != message_length:
+        #print(" %%%%%%%%%%%% check 6")
         info = (msg_obj, message_length, new_offset)
         r = self._error_handler(self.ERR_BAD_LENGTH, info)
         if r is False: break
@@ -1343,13 +1388,17 @@ class OFConnection (object):
         io_worker.consume_receive_buf(message_length)
         continue
 
+      #print(" %%%%%%%%%%%% check 7")
       io_worker.consume_receive_buf(message_length)
       self.starting = False
 
+      #print(" %%%%%%%%%%%% check 8")
       if self.on_message_received is None:
         raise RuntimeError("on_message_receieved hasn't been set yet!")
 
       try:
+        print(" %%%%%%%%%%%%%%%%%% Received Message from controller at switch :", msg_obj)
+        print("on_message_received handler:", self.on_message_received)
         self.on_message_received(self, msg_obj)
       except Exception as e:
         info = (e, message[:message_length], msg_obj)

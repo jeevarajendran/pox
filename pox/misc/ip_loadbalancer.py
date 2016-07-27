@@ -30,7 +30,7 @@ from pox.lib.packet.arp import arp
 from pox.lib.addresses import IPAddr, EthAddr
 from pox.lib.util import str_to_bool, dpid_to_str
 
-import pox.openflow.libopenflow_01 as of
+import pox.openflow.namelibopenflow_01 as of
 
 import time
 import random

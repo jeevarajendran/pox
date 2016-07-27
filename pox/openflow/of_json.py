@@ -20,7 +20,7 @@ Lots of stuff could be improved and the naming is pretty awful.
 """
 
 from pox.lib.util import fields_of,is_scalar
-import pox.openflow.libopenflow_01 as of
+import pox.openflow.namelibopenflow_01 as of
 
 def _fix_of_int (n):
   if isinstance(n, basestring):

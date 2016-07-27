@@ -23,7 +23,7 @@ from copy import copy
 
 sys.path.append(os.path.dirname(__file__) + "/../../..")
 
-from pox.openflow.libopenflow_01 import *
+from pox.openflow.namelibopenflow_01 import *
 from pox.openflow.flow_table import FlowTable
 from pox.datapaths.switch import *
 

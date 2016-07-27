@@ -17,7 +17,7 @@ Turns your complex OpenFlow switches into stupid hubs.
 """
 
 from pox.core import core
-import pox.openflow.libopenflow_01 as of
+import pox.openflow.namelibopenflow_01 as of
 from pox.lib.util import dpidToStr
 
 log = core.getLogger()

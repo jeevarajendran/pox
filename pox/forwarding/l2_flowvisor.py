@@ -30,7 +30,7 @@ Requires discovery.
 
 # These next two imports are common POX convention
 from pox.core import core
-import pox.openflow.libopenflow_01 as of
+import pox.openflow.namelibopenflow_01 as of
 import pox.openflow.spanning_tree as spanning_tree
 
 # Even a simple usage of the logger is much nicer than print!

@@ -26,7 +26,7 @@ from pox.datapaths.switch import ExpireMixin
 import pox.lib.pxpcap as pxpcap
 from Queue import Queue
 from threading import Thread
-import pox.openflow.libopenflow_01 as of
+import pox.openflow.namelibopenflow_01 as of
 from pox.lib.packet import ethernet
 import logging
 

@@ -14,7 +14,7 @@
 
 import inspect
 
-import pox.openflow.libopenflow_01 as of
+import pox.openflow.namelibopenflow_01 as of
 import pox.openflow.nicira_ext as nx
 from pox.datapaths.switch import SoftwareSwitch, OFConnection
 

@@ -26,7 +26,7 @@ from pox.lib.util import dpid_to_str, str_to_dpid
 from pox.lib.revent import EventMixin, Event
 import pox.lib.recoco as recoco
 
-import pox.openflow.libopenflow_01 as of
+import pox.openflow.namelibopenflow_01 as of
 
 import time
 import random

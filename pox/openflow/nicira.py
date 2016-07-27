@@ -21,10 +21,10 @@ from pox.lib.util import hexdump
 from pox.lib.addresses import parse_cidr, IPAddr, EthAddr, IPAddr6
 import pox.lib.packet as pkt
 
-import pox.openflow.libopenflow_01 as of
-from pox.openflow.libopenflow_01 import ofp_header, ofp_vendor_base
-from pox.openflow.libopenflow_01 import _PAD, _PAD2, _PAD4, _PAD6
-from pox.openflow.libopenflow_01 import _unpack, _read, _skip
+import pox.openflow.namelibopenflow_01 as of
+from pox.openflow.namelibopenflow_01 import ofp_header, ofp_vendor_base
+from pox.openflow.namelibopenflow_01 import _PAD, _PAD2, _PAD4, _PAD6
+from pox.openflow.namelibopenflow_01 import _unpack, _read, _skip
 
 import struct
 

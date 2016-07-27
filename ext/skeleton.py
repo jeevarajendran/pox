@@ -32,7 +32,7 @@ show up when used with the help component ("./pox.py help --mycomponent").
 
 # Import some POX stuff
 from pox.core import core                     # Main POX object
-import pox.openflow.libopenflow_01 as of      # OpenFlow 1.0 library
+import pox.openflow.namelibopenflow_01 as of      # OpenFlow 1.0 library
 import pox.lib.packet as pkt                  # Packet parsing/construction
 from pox.lib.addresses import EthAddr, IPAddr # Address types
 import pox.lib.util as poxutil                # Various util functions

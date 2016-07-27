@@ -45,7 +45,7 @@ from pox.lib.revent import EventMixin, Event
 from pox.lib.recoco import Timer
 import pox.lib.recoco as recoco
 
-import pox.openflow.libopenflow_01 as of
+import pox.openflow.namelibopenflow_01 as of
 from pox.proto.dhcpd import DHCPD, SimpleAddressPool
 
 import time

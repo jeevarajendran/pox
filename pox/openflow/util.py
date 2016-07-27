@@ -25,14 +25,16 @@ def make_type_to_unpacker_table ():
   data for those types into message objects.
   """
   print ("UTIL : make_type_to_unpacker_table ")
-  #print(" UTIL : of.messagetypetoclass", of._message_type_to_class)
+  print(" UTIL : of.messagetypetoclass", of._message_type_to_class)
   top = max(of._message_type_to_class)
-  #print("top = ", top)
+  print("top = ", top)
 
-  for i in range(0, top) :
-    print (of._message_type_to_class[i])
+  for i in range(0, top+1) :
+    print ("i=",i)
+    print ("=>",of._message_type_to_class[i])
 
-  r = [of._message_type_to_class[i].unpack_new for i in range(0, top)]
+
+  r = [of._message_type_to_class[i].unpack_new for i in range(0, top+1)]
 
   return r
 

@@ -27,7 +27,7 @@ from pox.lib.revent import *
 from pox.lib.recoco import Timer
 from pox.lib.util import dpid_to_str, str_to_bool
 from pox.core import core
-import pox.openflow.libopenflow_01 as of
+import pox.openflow.namelibopenflow_01 as of
 import pox.lib.packet as pkt
 
 import struct

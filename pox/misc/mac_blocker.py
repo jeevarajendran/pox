@@ -23,7 +23,7 @@ Start with --no-clear-tables if you don't want to clear tables on changes.
 from pox.core import core
 from pox.lib.revent import EventHalt
 from pox.lib.addresses import EthAddr
-import pox.openflow.libopenflow_01 as of
+import pox.openflow.namelibopenflow_01 as of
 
 from Tkinter import *
 

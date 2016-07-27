@@ -20,7 +20,7 @@ this is intended to be comparable with ryu cbench app.
 """
 
 from pox.core import core
-import pox.openflow.libopenflow_01 as of
+import pox.openflow.namelibopenflow_01 as of
 
 
 class CBench (object):

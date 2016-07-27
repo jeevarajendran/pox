@@ -33,7 +33,7 @@ from pox.lib.addresses import EthAddr, IPAddr
 from pox.lib.util import dpid_to_str, str_to_bool
 from pox.lib.revent import EventHalt, Event, EventMixin
 
-import pox.openflow.libopenflow_01 as of
+import pox.openflow.namelibopenflow_01 as of
 
 
 
