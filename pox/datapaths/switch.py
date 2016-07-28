@@ -329,7 +329,53 @@ class ICNSwitchBase (object):
     """
     Handles flow mods
     """
-    print("------------- Handling ADD CS ENTRY message in Switch---------------")
+    print("\n\n------------- Handling ADD CS ENTRY message in Switch---------------")
+    #print(" ****** Match = ", ofp.match)
+    print(" ****** Interest_name  = ", ofp.interest_name)
+    print(" ****** Data  = ", ofp.data)
+    match = ofp_match(interest_name = ofp.interest_name.split("$")[0])
+    new_entry = ContentStoreEntry(match=match,data=ofp.data)
+    self.content_store.add_entry(new_entry)
+    print("\n\n------------- Added new CS entry ---------------")
+
+  def _rx_clear_cs (self, ofp, connection):
+    """
+    Handles flow mods
+    """
+    print("\n\n------------- Handling CLEAR CS message in Switch---------------")
+    #self.content_store=
+    print("\n\n------------- Added new CS entry ---------------")
+    self.content_store.clear_table()
+
+  def _rx_data_from_controller_cache (self, ofp, connection):
+    """
+    Handles flow mods
+    """
+    print("\n\n------------- Handling  DATA from controller cache message in Switch---------------")
+    print(" Interest_name :", ofp.interest_name.split("$")[0])
+    interest_name = ofp.interest_name.split("$")[0]
+    print(" Data :", ofp.data)
+    print(" IN_port", connection.io_worker.port)
+    print(OFPP_CONTROLLER)
+    packet_data = "Interest:"+interest_name+",Data:"+ofp.data
+
+    packet = ethernet(raw=packet_data)
+
+    ports = self.pit_table.fetch_faces_from_pit_entry(interest_name)
+    if (ports != None):
+      print ("IN SWITCH : faces are returned :", ports)
+      for port in ports:
+        self._output_packet(packet, port, OFPP_CONTROLLER)
+
+    # Add to content store
+    is_cs_full = self.content_store._entries_counter
+    print(" **************** : Content Store Status :", is_cs_full)
+    if is_cs_full == 10:
+      print (" *************** : Content Store is Full")
+      self.send_cs_full()
+
+    #self.content_store=
+    #print("\n\n------------- Added new CS entry ---------------")
 
   def _rx_flow_mod (self, ofp, connection):
     """
@@ -417,19 +463,27 @@ class ICNSwitchBase (object):
     self.rx_packet(packet, 4)
     print(" -----------------------  3rd TEST --------------- RX_PACKET - FIB match END ------------------\n\n\n")
 
-    print(" \n\n\n-----------------------  4th TEST --------------- RX_PACKET - No match ------------------")
+    print(" \n\n\n-----------------------  4th TEST --------------- RX_PACKET - No match : Controller has route------------------")
     print(" *** ICN SWITCH BASE : Trying for packet in message")
     packet = ethernet(raw="Interest:/test/nomatch")
     #print(" ICN SWITCH BASE : Packet in message sent : ", msg.show())
     self.rx_packet(packet, 4)
-    print(" -----------------------  4th TEST --------------- RX_PACKET - No match END ------------------\n\n\n")
+    print(" -----------------------  4th TEST --------------- RX_PACKET - No match END : Controller has route -----------------\n\n\n")
 
-    print(" \n\n\n-----------------------  5th TEST --------------- RX_PACKET - Data ------------------")
+    print(" \n\n\n-----------------------  5th TEST --------------- RX_PACKET - No match : Controller has data ------------------")
+    print(" *** ICN SWITCH BASE : Trying for packet in message")
+    packet = ethernet(raw="Interest:/test/controllerhasdata")
+    #print(" ICN SWITCH BASE : Packet in message sent : ", msg.show())
+    self.rx_packet(packet, 4)
+    print(" -----------------------  5th TEST --------------- RX_PACKET - No match END : Controller has data------------------\n\n\n")
+
+
+    print(" \n\n\n-----------------------  6th TEST --------------- RX_PACKET - Data ------------------")
     print(" *** ICN SWITCH BASE : Trying for packet in message")
     packet = ethernet(raw="Interest:/test/fibmatch,Data:Sample_Data_For_Fibmatch")
     # print(" ICN SWITCH BASE : Packet in message sent : ", msg.show())
     self.rx_packet(packet, 4)
-    print(" -----------------------  5th TEST --------------- RX_PACKET - Data  END------------------\n\n\n")
+    print(" -----------------------  6th TEST --------------- RX_PACKET - Data  END------------------\n\n\n")
 
 
   def _rx_get_config_request (self, ofp, connection):
@@ -653,6 +707,12 @@ class ICNSwitchBase (object):
                 packet_data = packet.pack()
               self.send_packet_in(in_port, buffer_id, packet_data,
                                   reason=OFPR_NO_MATCH, data_length=self.miss_send_len)
+              if "Interest" in raw_packet :
+                print(" ICN SWITCH BASE : Sent the interest packet to controller, gonna add in PIT")
+                match = of.ofp_match.from_packet(packet)
+                new_pit_entry = PitTableEntry(match=match,ports=[in_port])
+                self.pit_table.add_entry(new_pit_entry)
+
       else :
         print(" Neither Interest Nor Data packet")
     else:

@@ -23,6 +23,7 @@ It's roughly similar to the one Brandon Heller did for NOX.
 
 from pox.core import core
 import pox.openflow.namelibopenflow_01 as of
+from pox.lib.packet import *
 
 log = core.getLogger()
 
@@ -48,8 +49,8 @@ class Tutorial (object):
     self.name_table = {'/test/contentstorematch':4,'/test/pitmatch':3,'/test/fibmatch':2,
                        '/test/nomatch':1}
 
-    self.content_dict = {'/test/data1':"BIGGGGGGGGGGGGGGGGGGGG DATAAAAAAAAAAAAAAAAAAAAA",'/test/data2':"Sample_data_2",'/test/data3':"Sample_data_3",
-                         '/test/data4': "Sample_data_4"}
+    self.content_dict = {'/test/data1':"Sample_data_1",'/test/data2':"Sample_data_2",'/test/data3':"Sample_data_3",
+                         '/test/data4': "Sample_data_4",'/test/controllerhasdata':"Data_for_controller_has_data"}
 
     self.init_content_store()
 
@@ -58,10 +59,10 @@ class Tutorial (object):
     print(" %%%%%%%%%%%%%% initContentStore Function")
     for k,v in self.content_dict.iteritems():
       print(" %%%%%%%%%%%%%%%% Inside loop")
-      match=of.ofp_match(interest_name=k)
+      #match=of.ofp_match(interest_name=k)
       msg=of.ofp_add_cs_entry()
 
-      msg.match=match
+      msg.interest_name=k+"$"
       msg.data=v
       #msg.data_length=len(v)
       #msg.idle_timeout = 66
@@ -119,31 +120,43 @@ class Tutorial (object):
     interest_name = interest.split(":")[1]
     print("OF_TUTORIAL : Interest name : ", interest_name)
     print("OF_TUTORIAL : Name Dictionary :", self.name_table)
-    port = self.name_table[interest_name]
-    print("OF_TUTORIAL : Port to send :", port)
 
-    #Jeeva : push a flow mod message
+    #Check in controller cache first
+    if interest_name in self.content_dict:
+      print("Controller has the data for the requested interest")
+      msg=of.ofp_data_from_controller_cache()
+      msg.interest_name = interest_name+"$"
+      msg.data = self.content_dict[interest_name]
+      self.connection.send(msg)
+    else: #Check in Name Table
+      port = self.name_table[interest_name]
+      print("OF_TUTORIAL : Port to send :", port)
 
-
-    print("OF_TUTORIAL : Sending Flow Mod message")
-    msg = of.ofp_flow_mod()
-    msg.match = of.ofp_match.from_packet(packet)
-    msg.idle_timeout = 77
-    msg.hard_timeout = 77
-    msg.actions.append(of.ofp_action_output(port=port))
-    #msg.data = event.ofp
-    self.connection.send(msg)
-    print("OF_TUTORIAL : Sent Flow Mod message")
+      #Jeeva : push a flow mod message
 
 
-    print("OF_TUTORIAL : Gonna resend the packet in the corressponding port through switch")
-    self.resend_packet(packet, port) #Jeeva : Change from packet to packet_in later
+      print("OF_TUTORIAL : Sending Flow Mod message")
+      msg = of.ofp_flow_mod()
+      msg.match = of.ofp_match.from_packet(packet)
+      msg.idle_timeout = 77
+      msg.hard_timeout = 77
+      msg.actions.append(of.ofp_action_output(port=port))
+      #msg.data = event.ofp
+      self.connection.send(msg)
+      print("OF_TUTORIAL : Sent Flow Mod message")
+
+
+      print("OF_TUTORIAL : Gonna resend the packet in the corressponding port through switch")
+      self.resend_packet(packet, port) #Jeeva : Change from packet to packet_in later
 
   def _handle_CsFull (self, event):
     """
     Handles packet in messages from the switch.
     """
     print(" ********* Handling CSFull Event ********************")
+    msg= of.ofp_clear_cs()
+    self.connection.send(msg)
+    print(" ********* Sent Content Store Clear message ***************")
 
   def _handle_PacketIn (self, event):
     """

@@ -1021,6 +1021,7 @@ class ContentStore(EventMixin):
     match=ofp_match(interest_name="/test/contentstorematch")
     entry = ContentStoreEntry(match=match, data="$$$$ - Data for the prefix "
                                                                      "/test/contentstorematch - $$$$")
+
     print (" Content Store: Adding content store entry for the prefix : /test/contentstorematch")
     self.add_entry(entry)
 
@@ -1045,6 +1046,21 @@ class ContentStore(EventMixin):
 
   def __len__(self):
     return len(self._table)
+
+  def clear_table(self):
+    table=self._table
+    low = 0
+    high = len(table)
+    print(" Table length :", high)
+    print(" Entry counter :", self._entries_counter)
+    for i in range(low,high) :
+      #print("i =", i)
+      table.pop()
+      #print(" Cleared")
+      self._entries_counter -= 1
+
+    print(" CLEARED THE TABLE")
+    print(" Total entries now :", self._entries_counter)
 
   def add_entry(self, entry):
 

@@ -1208,6 +1208,8 @@ class ofp_match (ofp_base):
         check_ip_or_arp(fix(self.nw_dst)),
         check_tp(self.tp_src), check_tp(self.tp_dst))
 
+    #packed += self.interest_name
+
     return packed
 
   def _normalize_wildcards (self, wildcards):
@@ -1339,6 +1341,7 @@ class ofp_match (ofp_base):
     offset,self._nw_src = _readip(raw, offset)
     offset,self._nw_dst = _readip(raw, offset)
     offset,(self._tp_src, self._tp_dst) = _unpack("!HH", raw, offset)
+    #offset,self.interest_name = raw
 
     # Only unwire wildcards for flow_mod
     self.wildcards = self._normalize_wildcards(
@@ -3787,6 +3790,135 @@ class ofp_cs_full (ofp_header):
     #outstr += prefix + 'data: ' + str(self.data) + '\n'
     return outstr
 
+# Jeeva
+# Controller message to add an content store entry
+
+@openflow_c_message("OFPT_DATA_FROM_CONTROLLER_CACHE", 25)
+class ofp_data_from_controller_cache(ofp_header):
+  _MIN_LENGTH = 72
+
+  def __init__(self, **kw):
+    ofp_header.__init__(self)
+    self.interest_name = "$Not yet assigned$"
+    self.data = None  # Not in the spec!  Special magic!  Can be packet_in.
+
+    initHelper(self, kw)
+
+  def _validate(self):
+    return None
+
+  def pack(self):
+    print("++++++++++++++++ In Pack method")
+    assert self._assert()
+
+    packed = b""
+    packed += ofp_header.pack(self)
+    packed += self.interest_name
+    packed += self.data
+    print(" +++++++++++ Length (packed ) :", len(packed))
+    return packed
+
+  def _read_interest(self, data, offset, delimiter, length):
+    Temp = data[offset:offset + length]
+    interest_name = Temp.split(delimiter)[0]
+    return (offset + len(interest_name) + 1, interest_name)  # '+1' is for $ delimiter
+
+  def unpack(self, raw, offset=0):
+    print("IN unpack method, total length :", len(raw))
+    offset, length = self._unpack_header(raw, offset)
+    print("offset = ", offset)
+    print("length = ", length)
+    offset, self.interest_name = self._read_interest(raw, offset, "$", length - offset)
+    self.interest_name = self.interest_name + "$"
+    print("offset = ", offset)
+    print("interest_name = ", self.interest_name)
+    offset, self.data = _read(raw, offset, length - offset)  # (length-offset)- Subtract the previously read bytes
+    print("offset = ", offset)
+    print("Data = ", self.data)
+    print(" length =", length)
+    print(" len(self) =", len(self))
+    assert length == len(self)
+    return offset, length
+
+  def __len__(self):
+    l = 8 + len(self.interest_name) + len(self.data)  # '+1' is for $ delimiter
+    print("Length in __len__ :", l)
+    return l
+
+  def __eq__(self, other):
+    if type(self) != type(other): return False
+    if not ofp_header.__eq__(self, other): return False
+    # if self.match != other.match: return False
+    # if self.cookie != other.cookie: return False
+    # if self.command != other.command: return False
+    # if self.idle_timeout != other.idle_timeout: return False
+    # if self.hard_timeout != other.hard_timeout: return False
+    # if self.priority != other.priority: return False
+    # if self.flags != other.flags: return False
+    if self.interest_name != interest_name.data: return False
+    if self.data != other.data: return False
+    return True
+
+  def show(self, prefix=''):
+    outstr = ''
+    outstr += prefix + 'header: \n'
+    outstr += ofp_header.show(self, prefix + '  ')
+    outstr += prefix + 'match: \n'
+    # outstr += self.match.show(prefix + '  ')
+    # outstr += prefix + 'cookie: ' + str(self.cookie) + '\n'
+    # outstr += prefix + 'command: ' + str(self.command) + '\n'
+    # o#utstr += prefix + 'idle_timeout: ' + str(self.idle_timeout) + '\n'
+    # outstr += prefix + 'hard_timeout: ' + str(self.hard_timeout) + '\n'
+    # outstr += prefix + 'priority: ' + str(self.priority) + '\n'
+    outstr += prefix + 'Interest_name: ' + str(self.interest_name) + '\n'
+    outstr += prefix + 'Data: ' + str(self.data) + '\n'
+    return outstr
+
+
+#Jeeva
+#Controller message to add an content store entry
+
+@openflow_c_message("OFPT_CLEAR_CS", 24)
+class ofp_clear_cs (ofp_header):
+  _MIN_LENGTH = 72
+  def __init__ (self, **kw):
+    ofp_header.__init__(self)
+
+    initHelper(self, kw)
+
+  def _validate (self):
+    return None
+
+  def pack (self):
+    print("++++++++++++++++ In Pack method")
+    assert self._assert()
+
+    packed = b""
+    packed += ofp_header.pack(self)
+    print (" +++++++++++ Length (packed ) :" , len(packed))
+    return packed
+
+  def unpack (self, raw, offset=0):
+    print("IN unpack method, total length :", len(raw))
+    offset,length = self._unpack_header(raw, offset)
+    assert length == len(self)
+    return offset,length
+
+  def __len__ (self):
+    l = 8
+    print("Length in __len__ :", l)
+    return l
+
+  def __eq__ (self, other):
+    if type(self) != type(other): return False
+    if not ofp_header.__eq__(self, other): return False
+    return True
+
+  def show (self, prefix=''):
+    outstr = ''
+    outstr += prefix + 'header: \n'
+    return outstr
+
 
 #Jeeva
 #Controller message to add an content store entry
@@ -3796,10 +3928,10 @@ class ofp_add_cs_entry (ofp_header):
   _MIN_LENGTH = 72
   def __init__ (self, **kw):
     ofp_header.__init__(self)
-    if 'match' in kw:
-      self.match = None
-    else:
-      self.match = ofp_match()
+    #if 'match' in kw:
+      #self.match = None
+    #else:
+      #self.match = ofp_match()
     #self.cookie = 0
     #self.command = OFPFC_ADD
     #self.idle_timeout = 0
@@ -3809,13 +3941,14 @@ class ofp_add_cs_entry (ofp_header):
     #self.out_port = OFPP_NONE
     #self.flags = 0
     #self.actions = []
+    self.interest_name="$Not yet assigned$"
     self.data = None # Not in the spec!  Special magic!  Can be packet_in.
 
     initHelper(self, kw)
 
   def _validate (self):
-    if not isinstance(self.match, ofp_match):
-      return "match is not class ofp_match"
+    #if not isinstance(self.match, ofp_match):
+      #return "match is not class ofp_match"
     return None
 
   def pack (self):
@@ -3824,7 +3957,7 @@ class ofp_add_cs_entry (ofp_header):
 
     packed = b""
     packed += ofp_header.pack(self)
-    packed += self.match.pack()
+    packed += self.interest_name
     packed += self.data
     #packed += struct.pack("!H", self.port_no)
     #if isinstance(self.hw_addr, bytes):
@@ -3835,41 +3968,49 @@ class ofp_add_cs_entry (ofp_header):
     print (" +++++++++++ Length (packed ) :" , len(packed))
     return packed
 
+  def _read_interest(self,data, offset, delimiter, length):
+    #if (len(data) - offset) < length:
+      #raise UnderrunError("wanted %s bytes but only have %s"
+       #                   % (length, len(data) - offset))
+    Temp = data[offset:offset + length]
+    interest_name = Temp.split(delimiter)[0]
+    #print(data[offset:offset + length])
+    #return (offset + length, data[offset:offset + length])
+    return (offset + len(interest_name)+1, interest_name)# '+1' is for $ delimiter
+
   def unpack (self, raw, offset=0):
-    print("IN unpack method")
+    print("IN unpack method, total length :", len(raw))
     offset,length = self._unpack_header(raw, offset)
-    offset= self.match.unpack(raw, offset)
-    print(" length after match :", length)
-    print(" offset after match :", offset)
-    offset, self.data = _read(raw, offset, length - offset ) #(length-offset)- Subtract the previously read bytes
-    print(" Data after reading : ", self.data)
-    #offset,length2 = _read(raw, offset, length-len(self.data))
-    #offset, self.data = _read(raw, offset,length2)
-    #offset,(self.port_no,) = _unpack("!H", raw, offset)
-    #offset,self.hw_addr = _readether(raw, offset)
-    #offset,(self.match, self.data) = \
-        #_unpack("!PP", raw, offset)
-    #ffset = _skip(raw, offset, 4)
-    print("length=",length)
-    print("len(self)=",len(self))
+    print("offset = ", offset)
+    print("length = ", length)
+    offset,self.interest_name= self._read_interest(raw, offset, "$", length-offset)
+    self.interest_name = self.interest_name + "$"
+    print("offset = ", offset)
+    print("interest_name = ", self.interest_name)
+    offset, self.data = _read(raw, offset, length - offset) #(length-offset)- Subtract the previously read bytes
+    print("offset = ", offset)
+    print("Data = ", self.data)
+    print(" length =", length)
+    print(" len(self) =", len(self))
     assert length == len(self)
     return offset,length
 
   def __len__ (self):
-    l = 8 + len(ofp_match) + len(self.data)
+    l = 8 + len(self.interest_name) + len(self.data)  # '+1' is for $ delimiter
     print("Length in __len__ :", l)
     return l
 
   def __eq__ (self, other):
     if type(self) != type(other): return False
     if not ofp_header.__eq__(self, other): return False
-    if self.match != other.match: return False
+    #if self.match != other.match: return False
     #if self.cookie != other.cookie: return False
     #if self.command != other.command: return False
     #if self.idle_timeout != other.idle_timeout: return False
     #if self.hard_timeout != other.hard_timeout: return False
     #if self.priority != other.priority: return False
     #if self.flags != other.flags: return False
+    if self.interest_name != interest_name.data: return False
     if self.data != other.data: return False
     return True
 
@@ -3878,12 +4019,13 @@ class ofp_add_cs_entry (ofp_header):
     outstr += prefix + 'header: \n'
     outstr += ofp_header.show(self, prefix + '  ')
     outstr += prefix + 'match: \n'
-    outstr += self.match.show(prefix + '  ')
+    #outstr += self.match.show(prefix + '  ')
     #outstr += prefix + 'cookie: ' + str(self.cookie) + '\n'
     #outstr += prefix + 'command: ' + str(self.command) + '\n'
     #o#utstr += prefix + 'idle_timeout: ' + str(self.idle_timeout) + '\n'
     #outstr += prefix + 'hard_timeout: ' + str(self.hard_timeout) + '\n'
     #outstr += prefix + 'priority: ' + str(self.priority) + '\n'
+    outstr += prefix + 'Interest_name: ' + str(self.interest_name) + '\n'
     outstr += prefix + 'Data: ' + str(self.data) + '\n'
     return outstr
 
@@ -4631,4 +4773,9 @@ ofp_match_data = {
   'tp_src' : (0, OFPFW_TP_SRC),
   'tp_dst' : (0, OFPFW_TP_DST),
   'interest_name':("",100)
+}
+
+
+ofp_name_match_data = {
+'interest_name':("",101)
 }
