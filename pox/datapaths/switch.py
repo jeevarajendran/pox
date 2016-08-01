@@ -40,6 +40,29 @@ from pox.openflow.util import make_type_to_unpacker_table
 from pox.openflow.flow_table import FlowTable, TableEntry
 from pox.openflow.name_table import *
 from pox.lib.packet import *
+from pox.lib.socketcapture import CaptureSocket
+from pox.lib.recoco.recoco import *
+from pox.core import core
+
+from pox.core import core
+import pox
+import pox.lib.util
+from pox.lib.addresses import EthAddr
+from pox.lib.revent.revent import EventMixin
+import datetime
+import time
+from pox.lib.socketcapture import CaptureSocket
+import pox.openflow.debug
+from pox.openflow.util import make_type_to_unpacker_table
+from pox.openflow import *
+
+log = core.getLogger()
+
+import threading
+import os
+import sys
+import exceptions
+from errno import EAGAIN, ECONNRESET, EADDRINUSE, EADDRNOTAVAIL
 
 import logging
 import struct
@@ -68,6 +91,139 @@ class DpPacketOut (Event):
     self.port = port
     self.switch = node # For backwards compatability
 
+#Jeeva : Connection to other switches
+
+class Connect_another_switch (Task):
+  """
+  The main recoco thread for listening to openflow messages
+  """
+  def __init__ (self, port = 7777, address = '0.0.0.0'):
+    Task.__init__(self)
+    self.port = int(port)
+    self.address = address
+    self.started = False
+
+    core.addListener(pox.core.GoingUpEvent, self._handle_GoingUpEvent)
+
+  def _handle_GoingUpEvent (self, event):
+    self.start()
+
+  def start (self):
+    if self.started:
+      return
+    self.started = True
+    return super(Connect_another_switch,self).start()
+
+  def run (self):
+    # List of open sockets/connections to select on
+    sockets = []
+
+
+    #print(" ***** Trying for another switch connection *****")
+
+
+    print(" ****** Switch : Connecting in a socket")
+    listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    try:
+      print(dir(self))
+      listener.bind((self.address, self.port))
+    except socket.error as (errno, strerror):
+      log.error("Error %i while binding socket: %s", errno, strerror)
+      if errno == EADDRNOTAVAIL:
+        log.error(" You may be specifying a local address which is "
+                  "not assigned to any interface.")
+      elif errno == EADDRINUSE:
+        log.error(" You may have another controller running.")
+        log.error(" Use openflow.of_01 --port=<port> to run POX on "
+                  "another port.")
+      return
+
+    listener.listen(16)
+    sockets.append(listener)
+
+    log.debug(" OF : Switch Listening on %s:%s" %
+              (self.address, self.port))
+    print("-----------------------------")
+    print("*****************************")
+    print("\n\n\n")
+
+    #try:
+      #new_sock = listener.accept()[0]
+      #print(" ***** Another switch connected *****", new_sock)
+    #except:
+      #print(" ***** Error while connecting to the socket ***** ")
+
+
+    con = None
+    while core.running:
+      try:
+        while True:
+          con = None
+          rlist, wlist, elist = yield Select(sockets, [], sockets, 5)
+          if len(rlist) == 0 and len(wlist) == 0 and len(elist) == 0:
+            if not core.running: break
+
+          for con in elist:
+            if con is listener:
+              raise RuntimeError("Error on listener socket")
+            else:
+              try:
+                con.close()
+              except:
+                pass
+              try:
+                sockets.remove(con)
+              except:
+                pass
+
+          timestamp = time.time()
+          for con in rlist:
+            if con is listener:
+              new_sock = listener.accept()[0]
+              print(" ***** Connected to another switch ***** ", new_sock)
+              if pox.openflow.debug.pcap_traces:
+                print(" INside")
+                #new_sock = wrap_socket(new_sock)
+              new_sock.setblocking(0)
+              # Note that instantiating a Connection object fires a
+              # ConnectionUp event (after negotation has completed)
+              #newcon = Connection(new_sock)
+              #sockets.append( newcon )
+              #print str(newcon) + " connected"
+            else:
+              con.idle_time = timestamp
+              if con.read() is False:
+                con.close()
+                sockets.remove(con)
+      except exceptions.KeyboardInterrupt:
+        break
+      except:
+        doTraceback = True
+        if sys.exc_info()[0] is socket.error:
+          if sys.exc_info()[1][0] == ECONNRESET:
+            con.info("Connection reset")
+            doTraceback = False
+
+        if doTraceback:
+          log.exception("Exception reading connection " + str(con))
+
+        if con is listener:
+          log.error("Exception on OpenFlow listener.  Aborting.")
+          break
+        try:
+          con.close()
+        except:
+          pass
+        try:
+          sockets.remove(con)
+        except:
+          pass
+
+
+    log.debug("No longer listening for connections")
+
+    #pox.core.quit()
 
 
 class ICNSwitchBase (object):
@@ -114,6 +270,7 @@ class ICNSwitchBase (object):
     # buffer for packets during packet_in
     self._packet_buffer = []
 
+    l = Connect_another_switch(port=7777, address='0.0.0.0')
     # Map port_no -> openflow.pylibopenflow_01.ofp_phy_ports
     self.ports = {}
     self.port_stats = {}
@@ -452,6 +609,27 @@ class ICNSwitchBase (object):
     print(" \n\n\n-----------------------  1st TEST --------------- RX_PACKET - CS match------------------")
     #print(" ICN SWITCH BASE : Gonna call rx_packet")
     packet =ethernet(raw="Interest:/test/contentstorematch")
+
+    test_value = -2431962746849102171
+    hash_value = hash("String")
+    print (" Test Hash value :", test_value )
+    print (" Hashed name     :", hash("String"))
+    print (" Hashed name     :", hash("Jeev"))
+
+    #Jeeva : Use this for hashing the string and putting it in the packet header
+    import hashlib
+    hasher = hashlib.sha1()
+    hasher.update('String')
+    print "3df63b7acb0522da685dad5fe84b81fdd7b25264"
+    print hasher.hexdigest()
+
+    hasher.update('Jeev')
+    print "d4b3d9e4e96a48bfd9d08fd704eee3e52295a54a"
+    print hasher.hexdigest()
+
+    hasher.update('/test/youtube.com/video1')
+    print hasher.hexdigest()
+
     self.rx_packet(packet, 4)
     print(" -----------------------  1st TEST --------------- RX_PACKET - CS match END ------------------\n\n\n")
 

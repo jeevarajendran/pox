@@ -899,10 +899,15 @@ class OpenFlow_01_Task (Task):
     # List of open sockets/connections to select on
     sockets = []
 
-    print(" OF : Connecting in a socket")
+
+    #print(" ***** Trying for another switch connection *****")
+
+
+    print(" ****** OF : Connecting in a socket")
     listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     try:
+      print(dir(self))
       listener.bind((self.address, self.port))
     except socket.error as (errno, strerror):
       log.error("Error %i while binding socket: %s", errno, strerror)
