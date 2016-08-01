@@ -56,9 +56,9 @@ class Tutorial (object):
 
   def init_content_store(self):
     print("\n\n\n")
-    print(" %%%%%%%%%%%%%% initContentStore Function")
+    print(" OF_TUTORIAL : initContentStore Function")
     for k,v in self.content_dict.iteritems():
-      print(" %%%%%%%%%%%%%%%% Inside loop")
+      #print(" %%%%%%%%%%%%%%%% Inside loop")
       #match=of.ofp_match(interest_name=k)
       msg=of.ofp_add_cs_entry()
 
@@ -67,9 +67,9 @@ class Tutorial (object):
       #msg.data_length=len(v)
       #msg.idle_timeout = 66
       #msg.hard_timeout = 66
-      print("\n\n")
-      print(" %%%%%%%%%%%%%% Gonna send content add message : msg", msg.show())
-      print("\n\n")
+      #print("\n\n")
+      #print(" %%%%%%%%%%%%%% Gonna send content add message : msg", msg.show())
+      #print("\n\n")
       self.connection.send(msg)
 
   def resend_packet (self, packet_in, out_port):
@@ -118,8 +118,8 @@ class Tutorial (object):
     #Jeeva : event.data or packet.raw will give the data payload
     interest = packet.raw
     interest_name = interest.split(":")[1]
-    print("OF_TUTORIAL : Interest name : ", interest_name)
-    print("OF_TUTORIAL : Name Dictionary :", self.name_table)
+    #print("OF_TUTORIAL : Interest name : ", interest_name)
+    #print("OF_TUTORIAL : Name Dictionary :", self.name_table)
 
     #Check in controller cache first
     if interest_name in self.content_dict:
@@ -130,7 +130,7 @@ class Tutorial (object):
       self.connection.send(msg)
     else: #Check in Name Table
       port = self.name_table[interest_name]
-      print("OF_TUTORIAL : Port to send :", port)
+      #print("OF_TUTORIAL : Port to send :", port)
 
       #Jeeva : push a flow mod message
 
@@ -143,7 +143,7 @@ class Tutorial (object):
       msg.actions.append(of.ofp_action_output(port=port))
       #msg.data = event.ofp
       self.connection.send(msg)
-      print("OF_TUTORIAL : Sent Flow Mod message")
+      #print("OF_TUTORIAL : Sent Flow Mod message")
 
 
       print("OF_TUTORIAL : Gonna resend the packet in the corressponding port through switch")
@@ -169,13 +169,13 @@ class Tutorial (object):
       return
 
     packet_in = event.ofp # The actual ofp_packet_in message.
-    print("OF_TUTORIAL : Packet In Message : " , event.data)
-    print("OF_TUTORIAL : Packet In Message : ", packet.msg)
-    print("OF_TUTORIAL : Packet In Message : ", packet.payload)
-    print("OF_TUTORIAL : Packet In Message : ", packet.raw)
-    print("OF_TUTORIAL : Packet In Message : ", packet.src)
-    print("OF_TUTORIAL : Packet In Message : ", packet.dst)
-    print("OF_TUTORIAL : Packet In Message : ", packet.type)
+    #print("OF_TUTORIAL : Packet In Message : " , event.data)
+    #print("OF_TUTORIAL : Packet In Message : ", packet.msg)
+    #print("OF_TUTORIAL : Packet In Message : ", packet.payload)
+    #print("OF_TUTORIAL : Packet In Message : ", packet.raw)
+    #print("OF_TUTORIAL : Packet In Message : ", packet.src)
+    #print("OF_TUTORIAL : Packet In Message : ", packet.dst)
+    #print("OF_TUTORIAL : Packet In Message : ", packet.type)
 
     # Comment out the following line and uncomment the one after
     # when starting the exercise.
@@ -190,7 +190,7 @@ def launch ():
   log.debug("OF_TUTORIAL : Launch Test")
   def start_switch (event):
     log.debug("OF_TUTORIAL : Controlling %s" % (event.connection,))
-    log.debug("OF_TUTORIAL : event details : %s" % (event.source))
+    #log.debug("OF_TUTORIAL : event details : %s" % (event.source))
     Tutorial(event.connection)
 
   core.openflow.addListenerByName("ConnectionUp", start_switch)

@@ -67,7 +67,7 @@ import traceback
 #Jeeva : handler for CS_FULL
 
 def handle_CS_FULL (con): #A
-  print("************* Handling CS Full")
+  print("***** Handling CS Full ***** ")
   e = con.ofnexus.raiseEventNoErrors(CsFull, con)
   if e is None or e.halt != True:
     con.raiseEventNoErrors(CsFull, con)
@@ -76,9 +76,9 @@ def handle_HELLO (con, msg): #S
   #con.msg("HELLO wire protocol " + hex(msg.version))
 
   # Send a features request
-  print(" Jeeva controller : Received Hello request")
+  print(" OF : Received Hello request")
   #print(" Jeeva controller : Got the connection from :", con.info, "\n")
-  print(" Jeeva controller : Got the connection from :", con.sock.getpeername(), "\n")
+  #print(" Jeeva controller : Got the connection from :", con.sock.getpeername(), "\n")
   msg = of.ofp_features_request()
   con.send(msg)
 
@@ -185,11 +185,11 @@ def handle_PORT_STATUS (con, msg): #A
     con.raiseEventNoErrors(PortStatus, con, msg)
 
 def handle_PACKET_IN (con, msg): #A
-  print(" *** Jeeva controller : Got packet_in message ***", msg.show(), "\n")
+  print(" OF : Got packet_in message : ", msg.show(), "\n")
   e = con.ofnexus.raiseEventNoErrors(PacketIn, con, msg)
-  print(" *** Jeeva controller : After calling con.ofnexus.raiseEventNoErrors : e :", e, "\n")
+  #print(" *** Jeeva controller : After calling con.ofnexus.raiseEventNoErrors : e :", e, "\n")
   if e is None or e.halt != True:
-    print(" *** Jeeva controller : e is none \n")
+    #print(" *** Jeeva controller : e is none \n")
     con.raiseEventNoErrors(PacketIn, con, msg)
 
 def handle_ERROR_MSG (con, msg): #A
@@ -396,7 +396,7 @@ class DeferredSender (threading.Thread):
 
 class DummyOFNexus (object):
   def raiseEventNoErrors (self, event, *args, **kw):
-    print("raised on dummy OpenFlow nexus \n")
+    #print("raised on dummy OpenFlow nexus \n")
     log.warning("%s raised on dummy OpenFlow nexus" % event)
   def raiseEvent (self, event, *args, **kw):
     log.warning("%s raised on dummy OpenFlow nexus" % event)
@@ -637,7 +637,7 @@ class Connection (EventMixin):
     self.connect_time = None
     self.idle_time = time.time()
 
-    print(" OF 01 : Controller sending Hello message to switch ")
+    print(" OF : Controller sending Hello message to switch ")
     self.send(of.ofp_hello())
 
     self.original_ports = PortCollection()
@@ -647,7 +647,7 @@ class Connection (EventMixin):
     #TODO: set a time that makes sure we actually establish a connection by
     #      some timeout
 
-    print(" OF 01 : Connection init method END")
+    print(" OF : Connection init method END")
 
   @property
   def eth_addr (self):
@@ -711,8 +711,8 @@ class Connection (EventMixin):
       # There's actually no reason the data has to be an instance of
       # ofp_header, but this check is likely to catch a lot of bugs,
       # so we check it anyway.
-      print("**** of.ofp_header :", of.ofp_header, "\n\n")
-      print("**** data :", data, "\n\n")
+      #print("**** of.ofp_header :", of.ofp_header, "\n\n")
+      #print("**** data :", data, "\n\n")
       assert isinstance(data, of.ofp_header)
       data = data.pack()
 
@@ -744,8 +744,8 @@ class Connection (EventMixin):
     """
     try:
       d = self.sock.recv(2048)
-      print("\n\n\n\n\n")
-      print("$$$$$$$$ RECEIVED data : ", d)
+      #print("\n\n\n\n\n")
+      print(" OF : Controller RECEIVED data from switch")
 
     except:
       return False
@@ -754,7 +754,7 @@ class Connection (EventMixin):
     self.buf += d
     buf_len = len(self.buf)
 
-    print("$$$$$$$$ Buf len = ", buf_len)
+    #print("$$$$$$$$ Buf len = ", buf_len)
 
     offset = 0
     while buf_len - offset >= 8: # 8 bytes is minimum OF message size
@@ -764,7 +764,7 @@ class Connection (EventMixin):
 
       ofp_type = ord(self.buf[offset+1])
 
-      print("$$$$$$$$ ofp_type : ", ofp_type)
+      print(" OF : ofp_type : ", ofp_type)
 
       if ord(self.buf[offset]) != of.OFP_VERSION:
         if ofp_type == of.OFPT_HELLO:
@@ -777,29 +777,29 @@ class Connection (EventMixin):
           return False # Throw connection away
 
       msg_length = ord(self.buf[offset+2]) << 8 | ord(self.buf[offset+3])
-      print(" $$$$$$$$ msg_length :", msg_length)
-      print(" $$$$$$$$ offset :", offset)
-      print(" $$$$$$$$ Difference :", buf_len - offset)
+      #print(" $$$$$$$$ msg_length :", msg_length)
+      #print(" $$$$$$$$ offset :", offset)
+      #print(" $$$$$$$$ Difference :", buf_len - offset)
 
       if buf_len - offset < msg_length:
         #Jeeva
         if(ofp_type ==22):
-          print ("$$$$$$ CS Full Ofp type")
+          #print ("$$$$$$ CS Full Ofp type")
           h = handlers[ofp_type]
-          print ("$$$$$$ Handler :", h)
+          #print ("$$$$$$ Handler :", h)
           h(self)
         break
 
       new_offset,msg = unpackers[ofp_type](self.buf, offset)
-      print(" $$$$$$$$ new_offset :", new_offset)
-      print(" $$$$$$$$ msg :", msg)
+      #print(" $$$$$$$$ new_offset :", new_offset)
+      #print(" $$$$$$$$ msg :", msg)
       assert new_offset - offset == msg_length
       offset = new_offset
 
       try:
-        print ("$$$$$$ Gonna try for handler")
+        #print ("$$$$$$ Gonna try for handler")
         h = handlers[ofp_type]
-        print ("$$$$$$ Handler :", h)
+        print (" OF : Handler :", h)
         print("\n\n\n\n\n")
         h(self, msg)
       except:
@@ -899,7 +899,7 @@ class OpenFlow_01_Task (Task):
     # List of open sockets/connections to select on
     sockets = []
 
-    print(" Jeeva controller : Connecting in a socket")
+    print(" OF : Connecting in a socket")
     listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     try:
@@ -918,8 +918,11 @@ class OpenFlow_01_Task (Task):
     listener.listen(16)
     sockets.append(listener)
 
-    log.debug(" Jeeva Controller : Listening on %s:%s" %
+    log.debug(" OF : Controller Listening on %s:%s" %
               (self.address, self.port))
+    print("-----------------------------")
+    print("*****************************")
+    print("\n\n\n")
 
     con = None
     while core.running:

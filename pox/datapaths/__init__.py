@@ -31,13 +31,13 @@ class OpenFlowWorker (BackoffWorker):
     print(" OpenFlowWorker ")
     self.switch = switch
     self.connection = None
-    print(" OpenFlowWorker Switch :", self.switch.dpid)
-    print(" OpenFlowWorker Connection :", self.connection)
+    #print(" OpenFlowWorker Switch :", self.switch.dpid)
+    #print(" OpenFlowWorker Connection :", self.connection)
     from pox.core import core
     self.log = core.getLogger("dp." + dpid_to_str(self.switch.dpid))
     super(OpenFlowWorker, self).__init__(switch=switch,**kw)
     self._info("Connecting to %s:%s", kw.get('addr'), kw.get('port'))
-    print("Connecting to %s:%s", kw.get('addr'), kw.get('port'))
+    print(" Connecting to %s:%s", kw.get('addr'), kw.get('port'))
 
   def _handle_close (self):
     super(OpenFlowWorker, self)._handle_close()
@@ -47,8 +47,11 @@ class OpenFlowWorker (BackoffWorker):
     super(OpenFlowWorker, self)._handle_connect()
     self.connection = OFConnection(self)
     self.switch.set_connection(self.connection)
-    self._info("Connected to controller")
-    print("Connected to controller")
+    self._info(" Connected to controller")
+    print("\n\n\n")
+    print(" ***** Connected to controller ******")
+    print(" ------------------------------------")
+    print("\n\n\n")
 
   def _error (self, *args, **kw):
     self.log.error(*args,**kw)
@@ -69,7 +72,7 @@ def do_launch (cls, address = '127.0.0.1', port = 6633, max_retry_delay = 16,
 
   Returns switch instance.
   """
-  print("DATAPATH : IN DO LAUNCH")
+  print(" DATAPATH : IN DO LAUNCH")
   if extra_args is not None:
     import ast
     extra_args = ast.literal_eval('{%s}' % (extra_args,))
@@ -117,15 +120,15 @@ def softwareswitch (address='127.0.0.1', port = 6633, max_retry_delay = 16,
 
   Not particularly useful, since SoftwareSwitch doesn't do much.
   """
-  print("DATAPATH : Software Switch Function")
+  print(" DATAPATH : Software Switch Function")
   from pox.core import core
-  print("DATAPATH : Registering in core")
+  print(" DATAPATH : Registering in core")
   core.register("datapaths", {})
 
   class ExpiringSwitch(ExpireMixin, SoftwareSwitch):
     pass
 
-  print("DATAPATH : Gonna call Do Launch")
+  print(" DATAPATH : Gonna call Do Launch")
   do_launch(ExpiringSwitch, address, port, max_retry_delay, dpid,
             extra_args = extra)
 
@@ -136,15 +139,15 @@ def icnswitch (address='127.0.0.1', port = 6633, max_retry_delay = 16,
 
   Not particularly useful, since ICNSwitch doesn't do much.
   """
-  print("DATAPATH : ICN Switch Function")
+  print(" DATAPATH : ICN Switch Function")
   from pox.core import core
-  print("DATAPATH : Registering in core")
+  print(" DATAPATH : Registering in core")
   core.register("datapaths", {})
 
   class ExpiringSwitch(ExpireMixin, ICNSwitch):
     pass
 
-  print("DATAPATH : Gonna call Do Launch")
+  print(" DATAPATH : Gonna call Do Launch")
   do_launch(ExpiringSwitch, address, port, max_retry_delay, dpid,
             extra_args = extra)
 

@@ -103,7 +103,7 @@ def _read (data, offset, length):
   if (len(data)-offset) < length:
     raise UnderrunError("wanted %s bytes but only have %s"
                         % (length, len(data)-offset))
-  print(data[offset:offset+length])
+  #print(data[offset:offset+length])
   return (offset+length, data[offset:offset+length])
 
 def _unpack (fmt, data, offset):
@@ -199,8 +199,8 @@ class ofp_base (object):
     """
     o = cls()
     r,length = o.unpack(raw, offset)
-    print("r-offset :", r-offset)
-    print("length :", length)
+    #print("r-offset :", r-offset)
+    #print("length :", length)
     assert (r-offset) == length, o
     return (r, o)
 
@@ -223,11 +223,11 @@ def openflow_message (ofp_type, type_val, reply_to=None,
 
   #_message_name_to_type[ofp_type] = type_val
   #_message_type_to_name[type_val] = ofp_type
-  print(" ++ Setting openflow_message ")
-  print(" ++ Setting openflow_message : ofp_type", ofp_type)
-  print(" ++ Setting openflow_message : type_value ", type_val)
-  print(" ++ Setting openflow_message : Switch message ? :", switch)
-  print(" ++ Setting openflow_message : Controller message  ? : ", controller)
+  #print(" ++ Setting openflow_message ")
+  #print(" ++ Setting openflow_message : ofp_type", ofp_type)
+  #print(" ++ Setting openflow_message : type_value ", type_val)
+  #print(" ++ Setting openflow_message : Switch message ? :", switch)
+  #print(" ++ Setting openflow_message : Controller message  ? : ", controller)
   ofp_type_rev_map[ofp_type] = type_val
   ofp_type_map[type_val] = ofp_type
   def f (c):
@@ -240,15 +240,15 @@ def openflow_message (ofp_type, type_val, reply_to=None,
   return f
 
 def openflow_sc_message (*args, **kw):
-  print(" ++ Setting openflow_message : Switch and Controller")
+  #print(" ++ Setting openflow_message : Switch and Controller")
   return openflow_message(switch=True, controller=True, *args, **kw)
 
 def openflow_c_message (*args, **kw):
-  print(" ++ Setting openflow_message  : Controller")
+  #print(" ++ Setting openflow_message  : Controller")
   return openflow_message(controller=True, *args, **kw)
 
 def openflow_s_message (*args, **kw):
-  print(" ++ Setting openflow_message : Switch ")
+  #print(" ++ Setting openflow_message : Switch ")
   return openflow_message(switch=True, *args, **kw)
 
 _queue_prop_type_to_class = {}
@@ -272,7 +272,7 @@ ofp_action_type_rev_map = {}
 ofp_action_type_map = {}
 
 def openflow_action (action_type, type_val):
-  print(" ++ Setting openflow_action :", action_type )
+  #print(" ++ Setting openflow_action :", action_type )
   ofp_action_type_rev_map[action_type] = type_val
   ofp_action_type_map[type_val] = action_type
   def f (c):
@@ -564,11 +564,11 @@ NO_BUFFER = 4294967295
 class ofp_header (ofp_base):
   _MIN_LENGTH = 8
   def __init__ (self, **kw):
-    print(" NAME LIB : OFP_HEADER : Initialization")
+    #print(" NAME LIB : OFP_HEADER : Initialization")
     self.version = OFP_VERSION
     #self.header_type = None # Set via class decorator
     self._xid = None
-    print(" NAME LIB : OFP_HEADER : kw : ", kw)
+    #print(" NAME LIB : OFP_HEADER : kw : ", kw)
     if 'header_type' in kw:
       self.header_type = kw.pop('header_type')
     initHelper(self, kw)
@@ -957,7 +957,7 @@ class ofp_match (ofp_base):
     @param packet  A pox.packet.ethernet instance or a packet_in
     @param spec_frags Handle IP fragments as specified in the spec.
     """
-    print(" NAME LIB : ofp_match : from_packet : Construct an exact match for the given packet")
+    #print(" NAME LIB : ofp_match : from_packet : Construct an exact match for the given packet")
     if isinstance(packet, ofp_packet_in):
       in_port = packet.in_port
       packet = ethernet(packet.data)
@@ -965,17 +965,17 @@ class ofp_match (ofp_base):
       print(" NAME LIB : ofp_match : from_packet : Not Packet_in, Just an ethernet packet")
     assert assert_type("packet", packet, ethernet, none_ok=False)
 
-    print(" NAME LIB : ofp_match : from_packet : packet data :", packet.raw)
+    #print(" NAME LIB : ofp_match : from_packet : packet data :", packet.raw)
     raw_packet = packet.raw
     interest=raw_packet.split(":")[1]
     match = cls()
-    print(" NAME LIB : ofp_match : from_packet : Matching class :", match.show())
+    #print(" NAME LIB : ofp_match : from_packet : Matching class :", match.show())
     if interest is not None:
-      print(" NAME LIB : ofp_match : from_packet : Setting the interest name in the match object")
+      #print(" NAME LIB : ofp_match : from_packet : Setting the interest name in the match object")
       match.interest_name = interest
-      print(" NAME LIB : ofp_match : from_packet : Done setting the interest name in the match object")
+      #print(" NAME LIB : ofp_match : from_packet : Done setting the interest name in the match object")
     else: #Jeeva
-      print(" NAME LIB : ofp_match : from_packet : No interest in the packet: Setting to Test")
+      #print(" NAME LIB : ofp_match : from_packet : No interest in the packet: Setting to Test")
       match.interest_name = "Test"
 
     return match
@@ -1005,12 +1005,12 @@ class ofp_match (ofp_base):
     return reversed
 
   def __init__ (self, **kw):
-    print(" NAME LIB : ofp_match : Init ")
+    #print(" NAME LIB : ofp_match : Init ")
     self._locked = False
 
     for k,v in ofp_match_data.iteritems():
-      print("k=", k)
-      print("v[0]", v[0])
+      #print("k=", k)
+      #print("v[0]", v[0])
       setattr(self, '_' + k, v[0])
 
     self.wildcards = self._normalize_wildcards(OFPFW_ALL)
@@ -1106,8 +1106,8 @@ class ofp_match (ofp_base):
       return value
 
     if name == 'interest_name':
-      print(" NAME LIB : ofp_match : __setattr__ for interest_name")
-      print(" NAME LIB : ofp_match : Interest value :", value)
+      #print(" NAME LIB : ofp_match : __setattr__ for interest_name")
+      #print(" NAME LIB : ofp_match : Interest value :", value)
       setattr(self, '_' + name, value)
       return value
 
@@ -1388,14 +1388,14 @@ class ofp_match (ofp_base):
     Important for non-strict modify flow_mods etc.
     """
 
-    print(" NAME LIB : matches_with_wildcards : function ")
+    #print(" NAME LIB : matches_with_wildcards : function ")
     if self == other:
-      print(" NAME LIB : matches_with_wildcards : self and other matches are same objects")
+      #print(" NAME LIB : matches_with_wildcards : self and other matches are same objects")
       return True
 
-    print(" NAME LIB : matches_with_wildcards : self and other matches are not same objects ")
-    print(" NAME LIB : matches_with_wildcards : self.interest_name : ", self.interest_name)
-    print(" NAME LIB : matches_with_wildcards : other.interest_name : ", other.interest_name)
+    #print(" NAME LIB : matches_with_wildcards : self and other matches are not same objects ")
+    #print(" NAME LIB : matches_with_wildcards : self.interest_name : ", self.interest_name)
+    #print(" NAME LIB : matches_with_wildcards : other.interest_name : ", other.interest_name)
     if self.interest_name == other.interest_name:
       return True
 
@@ -1503,14 +1503,14 @@ class ofp_action_generic (ofp_action_base):
 @openflow_action('OFPAT_ADDPIT', 900)
 class ofp_action_addpit (ofp_action_base):
   def __init__ (self, **kw):
-    print(" NAME LIB : ofp_action_add_pit : self :", self)
-    print(" NAME LIB : ofp_action_add_pit kw :", kw)
+    print(" NAME LIB : ofp_action_add_pit ")
+    #print(" NAME LIB : ofp_action_add_pit kw :", kw)
     self.ports = None # Purposely bad -- require specification
     self.interest_name = ""
     #self.max_len = 0xffFF
-    print(" NAME LIB : ofp_action_add_pit : self.port before calling initHelper :", self.ports)
+    #print(" NAME LIB : ofp_action_add_pit : self.port before calling initHelper :", self.ports)
     initHelper(self, kw)
-    print(" NAME LIB : ofp_action_add_pit : self.port after calling initHelper :", self.ports)
+    #print(" NAME LIB : ofp_action_add_pit : self.port after calling initHelper :", self.ports)
 
   def pack (self):
     if self.port != OFPP_CONTROLLER:
@@ -1554,13 +1554,13 @@ class ofp_action_addpit (ofp_action_base):
 @openflow_action('OFPAT_OUTPUT', 0)
 class ofp_action_output (ofp_action_base):
   def __init__ (self, **kw):
-    print(" NAME LIB : ofp_action_output : self :", self)
-    print(" NAME LIB : ofp_action_output : kw :", kw)
+    print(" NAME LIB : ofp_action_output ")
+    #print(" NAME LIB : ofp_action_output : kw :", kw)
     self.port = None # Purposely bad -- require specification
     self.max_len = 0xffFF
-    print(" NAME LIB : ofp_action_output : self.port before calling initHelper :", self.port)
+    #print(" NAME LIB : ofp_action_output : self.port before calling initHelper :", self.port)
     initHelper(self, kw)
-    print(" NAME LIB : ofp_action_output : self.port after calling initHelper :", self.port)
+    #print(" NAME LIB : ofp_action_output : self.port after calling initHelper :", self.port)
 
   def pack (self):
     if self.port != OFPP_CONTROLLER:
@@ -3808,14 +3808,14 @@ class ofp_data_from_controller_cache(ofp_header):
     return None
 
   def pack(self):
-    print("++++++++++++++++ In Pack method")
+    print("In Pack method")
     assert self._assert()
 
     packed = b""
     packed += ofp_header.pack(self)
     packed += self.interest_name
     packed += self.data
-    print(" +++++++++++ Length (packed ) :", len(packed))
+    #print(" +++++++++++ Length (packed ) :", len(packed))
     return packed
 
   def _read_interest(self, data, offset, delimiter, length):
@@ -3826,23 +3826,23 @@ class ofp_data_from_controller_cache(ofp_header):
   def unpack(self, raw, offset=0):
     print("IN unpack method, total length :", len(raw))
     offset, length = self._unpack_header(raw, offset)
-    print("offset = ", offset)
-    print("length = ", length)
+    #print("offset = ", offset)
+    #print("length = ", length)
     offset, self.interest_name = self._read_interest(raw, offset, "$", length - offset)
     self.interest_name = self.interest_name + "$"
-    print("offset = ", offset)
-    print("interest_name = ", self.interest_name)
+    #print("offset = ", offset)
+    #print("interest_name = ", self.interest_name)
     offset, self.data = _read(raw, offset, length - offset)  # (length-offset)- Subtract the previously read bytes
-    print("offset = ", offset)
-    print("Data = ", self.data)
-    print(" length =", length)
-    print(" len(self) =", len(self))
+    #print("offset = ", offset)
+    #print("Data = ", self.data)
+    #print(" length =", length)
+    #print(" len(self) =", len(self))
     assert length == len(self)
     return offset, length
 
   def __len__(self):
     l = 8 + len(self.interest_name) + len(self.data)  # '+1' is for $ delimiter
-    print("Length in __len__ :", l)
+    #print("Length in __len__ :", l)
     return l
 
   def __eq__(self, other):
@@ -3890,12 +3890,12 @@ class ofp_clear_cs (ofp_header):
     return None
 
   def pack (self):
-    print("++++++++++++++++ In Pack method")
+    print("In Pack method")
     assert self._assert()
 
     packed = b""
     packed += ofp_header.pack(self)
-    print (" +++++++++++ Length (packed ) :" , len(packed))
+    #print (" +++++++++++ Length (packed ) :" , len(packed))
     return packed
 
   def unpack (self, raw, offset=0):
@@ -3906,7 +3906,7 @@ class ofp_clear_cs (ofp_header):
 
   def __len__ (self):
     l = 8
-    print("Length in __len__ :", l)
+    #print("Length in __len__ :", l)
     return l
 
   def __eq__ (self, other):
@@ -3952,7 +3952,7 @@ class ofp_add_cs_entry (ofp_header):
     return None
 
   def pack (self):
-    print("++++++++++++++++ In Pack method")
+    print("In Pack method")
     assert self._assert()
 
     packed = b""
@@ -3965,7 +3965,7 @@ class ofp_add_cs_entry (ofp_header):
     #else:
       #packed += self.hw_addr.toRaw()
     #packed += struct.pack("!BB", self.match, self.data)
-    print (" +++++++++++ Length (packed ) :" , len(packed))
+    #print (" +++++++++++ Length (packed ) :" , len(packed))
     return packed
 
   def _read_interest(self,data, offset, delimiter, length):
@@ -3981,23 +3981,23 @@ class ofp_add_cs_entry (ofp_header):
   def unpack (self, raw, offset=0):
     print("IN unpack method, total length :", len(raw))
     offset,length = self._unpack_header(raw, offset)
-    print("offset = ", offset)
-    print("length = ", length)
+    #print("offset = ", offset)
+    #print("length = ", length)
     offset,self.interest_name= self._read_interest(raw, offset, "$", length-offset)
     self.interest_name = self.interest_name + "$"
-    print("offset = ", offset)
-    print("interest_name = ", self.interest_name)
+    #print("offset = ", offset)
+    #print("interest_name = ", self.interest_name)
     offset, self.data = _read(raw, offset, length - offset) #(length-offset)- Subtract the previously read bytes
-    print("offset = ", offset)
-    print("Data = ", self.data)
-    print(" length =", length)
-    print(" len(self) =", len(self))
+    #print("offset = ", offset)
+    #print("Data = ", self.data)
+    #print(" length =", length)
+    #print(" len(self) =", len(self))
     assert length == len(self)
     return offset,length
 
   def __len__ (self):
     l = 8 + len(self.interest_name) + len(self.data)  # '+1' is for $ delimiter
-    print("Length in __len__ :", l)
+    #print("Length in __len__ :", l)
     return l
 
   def __eq__ (self, other):
@@ -4676,11 +4676,11 @@ def _unpack_actions (b, length, offset=0):
     offset += l
   return (offset, actions)
 
-print("  Gonna call _init function")
+#print("  Gonna call _init function")
 def _init ():
-  print(" Inside _init function")
+  #print(" Inside _init function")
   def formatMap (name, m):
-    print(" INside format map function")
+    #print(" INside format map function")
     o = name + " = {\n"
     vk = sorted([(v,k) for k,v in m.iteritems()])
     maxlen = 2 + len(reduce(lambda a,b: a if len(a)>len(b) else b,

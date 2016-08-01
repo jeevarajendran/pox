@@ -222,8 +222,8 @@ class EventMixin (object):
       #print(" No eventMixin handlers \n")
       setattr(self, "_eventMixin_handlers", {})
 
-    print(" EventMixin : _eventMixin_init : self._eventMixin_handlers : ", self._eventMixin_handlers)
-    print(" EventMixin : _eventMixin_init : self._eventMixin_events : ", self._eventMixin_events)
+    #print(" EventMixin : Handlers : ", self._eventMixin_handlers)
+    #print(" EventMixin : Events : ", self._eventMixin_events)
 
   def raiseEventNoErrors (self, event, *args, **kw):
     """
@@ -264,20 +264,20 @@ class EventMixin (object):
     elif issubclass(event, Event):
       #print("check 4 ")
       # Check for early-out
-      print(" EventMixin : rasieEvent : self._eventMixin_handlers : ", self._eventMixin_handlers)
+      #print(" EventMixin : rasieEvent : self._eventMixin_handlers : ", self._eventMixin_handlers)
       if event not in self._eventMixin_handlers:
-        print(" EventMixin : rasieEvent : No Handlers for the event : Return none")
+        print(" EventMixin : rasieEvent : No Handlers ")
         return None
-      print(" $$$$$$ EventMixin : rasieEvent : even in eventmixin handlers ")
+      #print(" $$$$$$ EventMixin : rasieEvent : even in eventmixin handlers ")
       if len(self._eventMixin_handlers[event]) == 0:
         return None
-      print(" $$$$$$ EventMixin : rasieEvent : length of eventmixin handler is not 0")
+      #print(" $$$$$$ EventMixin : rasieEvent : length of eventmixin handler is not 0")
       #print("check 5 ")
       classCall = True
       eventType = event
-      print(" $$$$$$ EventMixin : rasieEvent : eventType :", eventType)
+      #print(" $$$$$$ EventMixin : rasieEvent : eventType :", eventType)
       event = eventType(*args, **kw)
-      print(" $$$$$$ EventMixin : rasieEvent : event :", event)
+      #print(" $$$$$$ EventMixin : rasieEvent : event :", event)
       args = ()
       kw = {}
       if event.source is None:
@@ -292,10 +292,10 @@ class EventMixin (object):
     # Create a copy so that it can be modified freely during event
     # processing.  It might make sense to change this.
     handlers = self._eventMixin_handlers.get(eventType, [])
-    print(" EventMixin : rasieEvent :  Handlers list : ", handlers)
+    #print(" EventMixin : rasieEvent :  Handlers list : ", handlers)
     for (priority, handler, once, eid) in handlers:
       if classCall:
-        print(" EventMixin : rasieEvent : Found handler for the event : Gonna invoke it : ", handler, "\n")
+        print(" EventMixin : rasieEvent : Found handler : Invoke : ", handler, "\n")
         rv = event._invoke(handler, *args, **kw)
       else:
         rv = handler(event, *args, **kw)
@@ -393,7 +393,7 @@ class EventMixin (object):
 
     Also see addListener().
     """
-    print(" EventMixin : addListenerByName function")
+    #print(" EventMixin : addListenerByName function")
     kw['byName'] = True
     return self.addListener(*args,**kw)
 
@@ -425,7 +425,7 @@ class EventMixin (object):
 
     The return value can be used for removing the listener.
     """
-    print(" EventMixin : addListener function")
+    #print(" EventMixin : addListener function")
     self._eventMixin_init()
     if (self._eventMixin_events is not True
         and eventType not in self._eventMixin_events):
@@ -514,7 +514,7 @@ def autoBindEvents (sink, source, prefix='', weak=False, priority=None):
 
   Returns the added listener IDs (so that you can remove them later).
   """
-  print(" ++++ Binding Events from to Source and the listeners from current class")
+  #print(" ++++ Binding Events from to Source and the listeners from current class")
   if len(prefix) > 0 and prefix[0] != '_': prefix = '_' + prefix
   if hasattr(source, '_eventMixin_events') is False:
     # If source does not declare that it raises any events, do nothing
@@ -548,9 +548,9 @@ def autoBindEvents (sink, source, prefix='', weak=False, priority=None):
           print("Warning: %s found in %s, but %s not raised by %s" %
                 (m, sink.__class__.__name__, event,
                  source.__class__.__name__))
-  print(" +++++ Done binding all the events to listeners - Returning listeners")
-  print(" +++++ \n\n Listeners List :", listeners);
-  print("\n\n")
+  #print(" +++++ Done binding all the events to listeners - Returning listeners")
+  #print(" +++++ \n\n Listeners List :", listeners);
+  #print("\n\n")
 
   return listeners
 

@@ -56,9 +56,9 @@ class DpPacketOut (Event):
   """
   def __init__ (self, node, packet, port):
     print(" DpPacketOut class : (Event raised when a dataplane packet is sent out a port)")
-    print (" Node: ", node)
-    print(" packet: ", packet)
-    print(" port: ", port)
+    #print (" Node: ", node)
+    #print(" packet: ", packet)
+    #print(" port: ", port)
     #In oredr succeed assert the packet type has to be checked . assert_type in lib/util.py , or comment
     #out the alert
     assert assert_type("packet", packet, ethernet, none_ok=False)
@@ -81,7 +81,7 @@ class ICNSwitchBase (object):
      - max_entries is max flows entries per table
     """
     print(" ICN SWITCH BASE: Init Function")
-    print("******** Switch features : ", features)
+    #print("******** Switch features : ", features)
 
     if name is None: name = dpid_to_str(dpid)
     self.name = name
@@ -118,8 +118,8 @@ class ICNSwitchBase (object):
     self.ports = {}
     self.port_stats = {}
 
+    print(" ICN SWITCH BASE: Add port")
     for port in ports:
-      print(" ICN SWITCH BASE: Add port")
       self.add_port(port)
 
     if features is not None:
@@ -170,15 +170,15 @@ class ICNSwitchBase (object):
     #TODO: Refactor this with above
     self.action_handlers = {}
     for value,name in ofp_action_type_map.iteritems():
-      print(" *** Setting Action Handlers for the action :", name)
+      #print(" Setting Action Handlers for the action :", name)
       name = name.split("OFPAT_",1)[-1].lower()
-      print("name = ", name)
+      #print("name = ", name)
       h = getattr(self, "_action_" + name, None)
       if not h: continue
       #if getattr(self.features, "act_" + name) is False: continue #Jeeva : Add this back. Seems like it is
       #checking whether the action is listed as switch features
       self.action_handlers[value] = h
-      print(" *** Handler that is set :", h )
+      #print(" *** Handler that is set :", h )
 
     # Set up handlers for stats handlers
     # That is, self.stats_handlers[OFPST_FOO] = self._stats_foo
@@ -224,6 +224,11 @@ class ICNSwitchBase (object):
     p.advertised = OFPPF_10MB_HD
     p.supported = OFPPF_10MB_HD
     p.peer = OFPPF_10MB_HD
+
+    print ("\n")
+    print (" $$$$$$$$ Generated port : ", p)
+    print ("\n")
+    print (" $$$$$$$$ Generated port dir : ", dir(p))
     return p
 
   @property
@@ -244,7 +249,7 @@ class ICNSwitchBase (object):
     """
     # Currently, we only use this for sending flow_removed messages
 
-    print(" ICN SWITCH BASE : _handle_FibTableModification : I am the listener who caught the name table modification "
+    print(" ICN SWITCH BASE : _handle_FibTableModification : I am the listener who caught the Fib table modification "
           "event")
 
     if not event.removed: return
@@ -331,8 +336,8 @@ class ICNSwitchBase (object):
     """
     print("\n\n------------- Handling ADD CS ENTRY message in Switch---------------")
     #print(" ****** Match = ", ofp.match)
-    print(" ****** Interest_name  = ", ofp.interest_name)
-    print(" ****** Data  = ", ofp.data)
+    #print(" ****** Interest_name  = ", ofp.interest_name)
+    #print(" ****** Data  = ", ofp.data)
     match = ofp_match(interest_name = ofp.interest_name.split("$")[0])
     new_entry = ContentStoreEntry(match=match,data=ofp.data)
     self.content_store.add_entry(new_entry)
@@ -352,26 +357,26 @@ class ICNSwitchBase (object):
     Handles flow mods
     """
     print("\n\n------------- Handling  DATA from controller cache message in Switch---------------")
-    print(" Interest_name :", ofp.interest_name.split("$")[0])
+    #print(" Interest_name :", ofp.interest_name.split("$")[0])
     interest_name = ofp.interest_name.split("$")[0]
-    print(" Data :", ofp.data)
-    print(" IN_port", connection.io_worker.port)
-    print(OFPP_CONTROLLER)
+    #print(" Data :", ofp.data)
+    #print(" IN_port", connection.io_worker.port)
+    #print(OFPP_CONTROLLER)
     packet_data = "Interest:"+interest_name+",Data:"+ofp.data
 
     packet = ethernet(raw=packet_data)
 
     ports = self.pit_table.fetch_faces_from_pit_entry(interest_name)
     if (ports != None):
-      print ("IN SWITCH : faces are returned :", ports)
+      print (" ICN SWITCH : faces are returned :", ports)
       for port in ports:
         self._output_packet(packet, port, OFPP_CONTROLLER)
 
     # Add to content store
     is_cs_full = self.content_store._entries_counter
-    print(" **************** : Content Store Status :", is_cs_full)
+    #print(" **************** : Content Store Status :", is_cs_full)
     if is_cs_full == 10:
-      print (" *************** : Content Store is Full")
+      print (" ICN SWITCH : Content Store is Full")
       self.send_cs_full()
 
     #self.content_store=
@@ -382,11 +387,11 @@ class ICNSwitchBase (object):
     Handles flow mods
     """
     self.log.debug("Flow mod details: %s", ofp.show())
-    print(" ICN SWITCH BASE : _rx_flow_mod : ofp.command :", ofp.command)
+    #print(" ICN SWITCH BASE : _rx_flow_mod : ofp.command :", ofp.command)
     #self.table.process_flow_mod(ofp)
     #self._process_flow_mod(ofp, connection=connection, table=self.table)
     handler = self.flow_mod_handlers.get(ofp.command)
-    print(" ICN SWITCH BASE : _rx_flow_mod : Handler for the command :", handler)
+    #print(" ICN SWITCH BASE : _rx_flow_mod : Handler for the command :", handler)
     if handler is None:
       self.log.warn("Command not implemented: %s" % command)
       self.send_error(type=OFPET_FLOW_MOD_FAILED, code=OFPFMFC_BAD_COMMAND,
@@ -429,7 +434,7 @@ class ICNSwitchBase (object):
 
     '''
     print(" \n\n\n-----------------------  1st TEST --------------- PACKET_IN ------------------")
-    print(" *** ICN SWITCH BASE : Trying for packet in message")
+    print(" *** ICN SWITCH BASE : Trying for packet in message ***")
     msg = ofp_packet_in(xid=0,data="Interest:icndemotest")
     print(" ICN SWITCH BASE : Packet in message sent : ", msg.show())
     self.send(msg)
@@ -445,33 +450,33 @@ class ICNSwitchBase (object):
     #Jeeva : 1 is the in port and controller assigns port 4 as output for this packet
 
     print(" \n\n\n-----------------------  1st TEST --------------- RX_PACKET - CS match------------------")
-    print(" ##### ICN SWITCH BASE : Gonna call rx_packet")
+    #print(" ICN SWITCH BASE : Gonna call rx_packet")
     packet =ethernet(raw="Interest:/test/contentstorematch")
     self.rx_packet(packet, 4)
     print(" -----------------------  1st TEST --------------- RX_PACKET - CS match END ------------------\n\n\n")
 
     print(" \n\n\n-----------------------  2nd TEST --------------- RX_PACKET - PIT match------------------")
-    print(" ##### ICN SWITCH BASE : Gonna call rx_packet")
+    #print(" ICN SWITCH BASE : Gonna call rx_packet")
     packet = ethernet(raw="Interest:/test/pitmatch")
     self.rx_packet(packet, 4)
     print(" -----------------------  2nd TEST --------------- RX_PACKET - PIT match END ------------------\n\n\n")
 
     print(" \n\n\n-----------------------  3rd TEST --------------- RX_PACKET - FIB match ------------------")
-    print(" *** ICN SWITCH BASE : Trying for packet in message")
+    #print(" ICN SWITCH BASE : Gonna call rx_packet")
     packet = ethernet(raw="Interest:/test/fibmatch")
     #print(" ICN SWITCH BASE : Packet in message sent : ", msg.show())
     self.rx_packet(packet, 4)
     print(" -----------------------  3rd TEST --------------- RX_PACKET - FIB match END ------------------\n\n\n")
 
     print(" \n\n\n-----------------------  4th TEST --------------- RX_PACKET - No match : Controller has route------------------")
-    print(" *** ICN SWITCH BASE : Trying for packet in message")
+    #print(" ICN SWITCH BASE : Gonna call rx_packet")
     packet = ethernet(raw="Interest:/test/nomatch")
     #print(" ICN SWITCH BASE : Packet in message sent : ", msg.show())
     self.rx_packet(packet, 4)
     print(" -----------------------  4th TEST --------------- RX_PACKET - No match END : Controller has route -----------------\n\n\n")
 
     print(" \n\n\n-----------------------  5th TEST --------------- RX_PACKET - No match : Controller has data ------------------")
-    print(" *** ICN SWITCH BASE : Trying for packet in message")
+    #print(" ICN SWITCH BASE : Gonna call rx_packete")
     packet = ethernet(raw="Interest:/test/controllerhasdata")
     #print(" ICN SWITCH BASE : Packet in message sent : ", msg.show())
     self.rx_packet(packet, 4)
@@ -479,7 +484,7 @@ class ICNSwitchBase (object):
 
 
     print(" \n\n\n-----------------------  6th TEST --------------- RX_PACKET - Data ------------------")
-    print(" *** ICN SWITCH BASE : Trying for packet in message")
+    #print(" ICN SWITCH BASE : Gonna call rx_packet")
     packet = ethernet(raw="Interest:/test/fibmatch,Data:Sample_Data_For_Fibmatch")
     # print(" ICN SWITCH BASE : Packet in message sent : ", msg.show())
     self.rx_packet(packet, 4)
@@ -562,11 +567,11 @@ class ICNSwitchBase (object):
     """
         Send CS_FULL
     """
-    print(" *************** ICN Switch BASE: send_cs_full function ")
+    print(" ICN Switch BASE: send_cs_full function ")
 
     msg = ofp_cs_full(xid=0)
 
-    print(" *************** ICN Switch BASE : CS Full msg :", msg)
+    #print(" ICN Switch BASE : CS Full msg :", msg)
 
     self.send(msg)
 
@@ -581,7 +586,7 @@ class ICNSwitchBase (object):
     self._has_sent_hello = True
     self.log.debug("Sent hello")
     msg = ofp_hello(xid=0)
-    print(" ICN SWITCH BASE : send_hello -> hello msg.show()", msg.show())
+    #print(" ICN SWITCH BASE : send_hello -> hello msg.show()", msg.show())
     self.send(msg)
 
 
@@ -667,7 +672,7 @@ class ICNSwitchBase (object):
       return
 
     raw_packet = packet.raw
-    print(" RAW Packet :", raw_packet)
+    #print(" RAW Packet :", raw_packet)
     if "Data:" not in raw_packet :
       if "Interest:" in raw_packet :
         print(" This is an Interest Packet")
@@ -689,7 +694,7 @@ class ICNSwitchBase (object):
             print ("IN SWITCH : No PIT entry Found in the table, Gonna look in the FIB")
             self._lookup_count += 1
             fib_entry = self.table.entry_for_packet(packet, in_port)
-            print(" ICN SWITCH BASE , rx_packet , FIB entry : ", fib_entry)
+            #print(" ICN SWITCH BASE , rx_packet , FIB entry : ", fib_entry)
             if fib_entry is not None:
               print(" ICN SWITCH BASE : FIB Entry Found")
               self._matched_count += 1
@@ -720,8 +725,8 @@ class ICNSwitchBase (object):
       #Extract Interest and Data from the packet
       interest = raw_packet[len("Interest:"):-len(raw_packet[raw_packet.index(",Data:"):])]
       data = raw_packet[-raw_packet.index("Data:"):]
-      print(" Interest :", interest)
-      print(" Data :", data)
+      #print(" Interest :", interest)
+      #print(" Data :", data)
       ports = self.pit_table.fetch_faces_from_pit_entry(interest)
       if (ports != True):
         print ("IN SWITCH : faces are returned :", ports)
@@ -730,9 +735,9 @@ class ICNSwitchBase (object):
 
       #Add to content store
       is_cs_full = self.content_store._entries_counter
-      print(" **************** : Content Store Status :", is_cs_full)
+      #print(" **************** : Content Store Status :", is_cs_full)
       if is_cs_full == 1:
-        print (" *************** : Content Store is Full")
+        print (" Content Store is Full")
         self.send_cs_full()
         #Send the message
 
@@ -847,15 +852,15 @@ class ICNSwitchBase (object):
     max_len: maximum packet payload length to send to controller
     """
     print(" ICN Switch BASE : _output_packet : send a packet out some port ")
-    print(" ICN Switch BASE : _output_packet : packet : ", packet)
-    print(" ICN Switch BASE : _output_packet : out_port : ", out_port)
-    print(" ICN Switch BASE : _output_packet : in_port : ", in_port)
+    #print(" ICN Switch BASE : _output_packet : packet : ", packet)
+    #print(" ICN Switch BASE : _output_packet : out_port : ", out_port)
+    #print(" ICN Switch BASE : _output_packet : in_port : ", in_port)
     assert assert_type("packet", packet, ethernet, none_ok=False)
 
     def real_send (port_no, allow_in_port=False):
       print(" ICN Switch BASE : real_send " )
       if type(port_no) == ofp_phy_port:
-        print(" ICN Switch BASE : real_send : port_no == ofp_phy_port type")
+        #print(" ICN Switch BASE : real_send : port_no == ofp_phy_port type")
         port_no = port_no.port_no
       if port_no == in_port and not allow_in_port:
         self.log.warn("Dropping packet sent on port %i: Input port", port_no)
@@ -873,38 +878,38 @@ class ICNSwitchBase (object):
       if self.ports[port_no].state & OFPPS_LINK_DOWN:
         self.log.debug("Dropping packet sent on port %i: Link down", port_no)
         return
-      print(" ICN Switch BASE : real_send : Didnt drop the packet")
+      #print(" ICN Switch BASE : real_send : Didnt drop the packet")
       self.port_stats[port_no].tx_packets += 1
       self.port_stats[port_no].tx_bytes += len(packet.pack()) #FIXME: Expensive
-      print(" ICN Switch BASE : real_send : Gonna call _output_packet_physical with port_no : ", port_no)
+      #print(" ICN Switch BASE : real_send : Gonna call _output_packet_physical with port_no : ", port_no)
       self._output_packet_physical(packet, port_no)
 
-    print(" ICN Switch BASE : Skipped real_send for now" )
+    #print(" ICN Switch BASE : Skipped real_send for now" )
     if out_port < OFPP_MAX:
-      print(" ICN Switch BASE : out_port < OFPP_MAX : Gonna call real_send")
+      #print(" ICN Switch BASE : out_port < OFPP_MAX : Gonna call real_send")
       real_send(out_port)
     elif out_port == OFPP_IN_PORT:
-      print(" ICN Switch BASE : out_port == OFPP_IN_PORT : Gonna call real_send")
+      #print(" ICN Switch BASE : out_port == OFPP_IN_PORT : Gonna call real_send")
       real_send(in_port, allow_in_port=True)
     elif out_port == OFPP_FLOOD:
-      print(" ICN Switch BASE : out_port == OFPP_FLOOD : Gonna call real_send")
+      #print(" ICN Switch BASE : out_port == OFPP_FLOOD : Gonna call real_send")
       for no,port in self.ports.iteritems():
         if no == in_port: continue
         if port.config & OFPPC_NO_FLOOD: continue
         real_send(port)
     elif out_port == OFPP_ALL:
-      print(" ICN Switch BASE : out_port == OFPP_ALL : Gonna call real_send")
+      #print(" ICN Switch BASE : out_port == OFPP_ALL : Gonna call real_send")
       for no,port in self.ports.iteritems():
         if no == in_port: continue
         real_send(port)
     elif out_port == OFPP_CONTROLLER:
-      print(" ICN Switch BASE : out_port == OFPP_CONTROLLER : Gonna call send_packet_in")
+      #print(" ICN Switch BASE : out_port == OFPP_CONTROLLER : Gonna call send_packet_in")
       buffer_id = self._buffer_packet(packet, in_port)
       # Should we honor OFPPC_NO_PACKET_IN here?
       self.send_packet_in(in_port, buffer_id, packet, reason=OFPR_ACTION,
                           data_length=max_len)
     elif out_port == OFPP_TABLE:
-      print(" ICN Switch BASE : out_port == OFPP_TABLE : Gonna call rx_packet")
+      #print(" ICN Switch BASE : out_port == OFPP_TABLE : Gonna call rx_packet")
       # Do we disable send-to-controller when performing this?
       # (Currently, there's the possibility that a table miss from this
       # will result in a send-to-controller which may send back to table...)
@@ -958,21 +963,21 @@ class ICNSwitchBase (object):
     ofp is the message which triggered this processing, if any (used for error
     generation)
     """
-    print(" ICN SWITCH BASE : In _process_actions_for_packet")
+    #print(" ICN SWITCH BASE : In _process_actions_for_packet")
     print(" ICN SWITCH BASE : In _process_actions_for_packet : actions :", actions)
     assert assert_type("packet", packet, (ethernet, bytes), none_ok=False)
     if not isinstance(packet, ethernet):
       packet = ethernet.unpack(packet)
 
-    print(" ICN SWITCH BASE : In _process_actions_for_packet : Ensured packet is an ethernet packet")
+    #print(" ICN SWITCH BASE : In _process_actions_for_packet : Ensured packet is an ethernet packet")
     for action in actions:
       #if action.type is ofp_action_resubmit:
       #  self.rx_packet(packet, in_port)
       #  return
       # Jeeva : So new action handlers have to be added for new actions
-      print(" *** ICN SWITCH BASE : In _process_actions_for_packet : Inside actions for loop ")
+      #print(" *** ICN SWITCH BASE : In _process_actions_for_packet : Inside actions for loop ")
       h = self.action_handlers.get(action.type)
-      print(" ICN SWITCH BASE : In _process_actions_for_packet : action handler :", h)
+      #print(" ICN SWITCH BASE : In _process_actions_for_packet : action handler :", h)
       if h is None:
         self.log.warn("Unknown action type: %x " % (action.type,))
         self.send_error(type=OFPET_BAD_ACTION, code=OFPBAC_BAD_TYPE, ofp=ofp)
@@ -1086,7 +1091,7 @@ class ICNSwitchBase (object):
   #Jeeva : Action to handle ADDPIT action
   def _action_addpit(self, action, packet, in_port):
     print(" ICN SWITCH BASE : _action_addpit ")
-    print(" Gonna add the entry into PIT table with the following ports from action", action.ports)
+    #print(" Gonna add the entry into PIT table with the following ports from action", action.ports)
     match=ofp_match(interest_name=action.interest_name)
     self.pit_table.add_entry(PitTableEntry(match=match,ports=action.ports))
     return True
@@ -1355,14 +1360,14 @@ class OFConnection (object):
     self.log.info("%s %s", str(self), str(m))
 
   def __init__ (self, io_worker):
-    print(" OFConnection : init method , io_worker :", io_worker)
+    #print(" OFConnection : init method , io_worker :", io_worker)
     self.starting = True # No data yet
     self.io_worker = io_worker
     self.io_worker.rx_handler = self.read
     #Jeeva : controller is got from ioworker.socket.getpeername()
     self.controller_id = io_worker.socket.getpeername()
     #print(" OF Connection : dir(socket)", dir(io_worker.socket))
-    print(" OF Connection : controller id io_worker.socket.getpeername() : ", io_worker.socket.getpeername())
+    #print(" OF Connection : controller id io_worker.socket.getpeername() : ", io_worker.socket.getpeername())
     OFConnection.ID += 1
     self.ID = OFConnection.ID
     self.log = logging.getLogger("ControllerConnection(id=%d)" % (self.ID,))
@@ -1371,7 +1376,7 @@ class OFConnection (object):
     self.on_message_received = None
 
   def set_message_handler (self, handler):
-    print(" OFConnection : set_message_handler : ", handler)
+    #print(" OFConnection : set_message_handler : ", handler)
     self.on_message_received = handler
 
   def send (self, data):
@@ -1387,13 +1392,13 @@ class OFConnection (object):
     if type(data) is not bytes:
       if hasattr(data, 'pack'):
         data = data.pack()
-    print(" Data bytes :", data)
+    #print(" Data bytes :", data)
     self.io_worker.send(data)
-    print(" io_worker :", self.io_worker)
+    #print(" io_worker :", self.io_worker)
     print(" OFConnection : Finished sending raw data to controller")
 
   def read (self, io_worker):
-    print(" %%%%%%%%%%%%%%%%%% Received Message from controller at switch Reading")
+    print(" Received Message from controller at switch Reading")
     #FIXME: Do we need to pass io_worker here?
     while True:
       message = io_worker.peek()
@@ -1402,12 +1407,12 @@ class OFConnection (object):
 
       # Parse head of OpenFlow message by hand
       ofp_version = ord(message[0])
-      print(" %%%%%%%%%%%% OFP_VERSION :", ofp_version)
+      #print(" %%%%%%%%%%%% OFP_VERSION :", ofp_version)
       ofp_type = ord(message[1])
-      print(" %%%%%%%%%%%% OFP_type :", ofp_type)
+      #print(" %%%%%%%%%%%% OFP_type :", ofp_type)
 
       if ofp_version != OFP_VERSION:
-        print(" %%%%%%%%%%%% Bad ofp version")
+        #print(" %%%%%%%%%%%% Bad ofp version")
         info = ofp_version
         r = self._error_handler(self.ERR_BAD_VERSION, info)
         if r is False: break
@@ -1436,7 +1441,7 @@ class OFConnection (object):
         continue
 
       #print(" %%%%%%%%%%%% check 4")
-      print("Gonna unpack the message :, message :", message)
+      print(" Gonna unpack the message")
       new_offset, msg_obj = self.unpackers[ofp_type](message, 0)
       #print(" %%%%%%%%%%%% check 5")
       if new_offset != message_length:
@@ -1457,7 +1462,7 @@ class OFConnection (object):
         raise RuntimeError("on_message_receieved hasn't been set yet!")
 
       try:
-        print(" %%%%%%%%%%%%%%%%%% Received Message from controller at switch :", msg_obj)
+        #print(" %%%%%%%%%%%%%%%%%% Received Message from controller at switch :", msg_obj)
         print("on_message_received handler:", self.on_message_received)
         self.on_message_received(self, msg_obj)
       except Exception as e:
@@ -1558,12 +1563,12 @@ class SwitchFeatures (object):
   and ".cap_foo" for all OFPC_FOO (as gathered from libopenflow).
   """
   def __init__ (self, **kw):
-    print(" ****** Switch Features : init function")
+    print(" Switch Features : init function")
     self._cap_info = {}
-    print(dir(ofp_capabilities_map))
+    #print(dir(ofp_capabilities_map))
     for val,name in ofp_capabilities_map.iteritems():
-      print(" Capabilities - name : ", name)
-      print(" Capabilities - value : ", val)
+      #print(" Capabilities - name : ", name)
+      #print(" Capabilities - value : ", val)
       name = name[5:].lower() # strip OFPC_
       name = "cap_" + name
       setattr(self, name, False)
@@ -1571,8 +1576,8 @@ class SwitchFeatures (object):
 
     self._act_info = {}
     for val,name in ofp_action_type_map.iteritems():
-      print(" Action name : ", name)
-      print(" Action value : ", val)
+      #print(" Action name : ", name)
+      #print(" Action value : ", val)
       name = name[6:].lower() # strip OFPAT_
       name = "act_" + name
       setattr(self, name, False)

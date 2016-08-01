@@ -58,13 +58,13 @@ print("BOOT : Core is initialized")
 
 import pox.openflow
 
-print("BOOT : Checkpoint after import pox.openflow")
+#print("BOOT : Checkpoint after import pox.openflow")
 import pox.openflow.of_01
 
-print("BOOT : Checkpoint after pox.openflow.of_01")
+#print("BOOT : Checkpoint after pox.openflow.of_01")
 from pox.lib.util import str_to_bool
 
-print("BOOT : Checkpoint")
+#print("BOOT : Checkpoint")
 
 # Function to run on main thread
 _main_thread_function = None
@@ -512,9 +512,9 @@ def boot (argv = None):
     argv = pre + "py --disable".split() + argv
 
     if _do_launch(argv):
-      print(" BOOT : Gonna call _post_startup")
+      #print(" BOOT : Gonna call _post_startup")
       _post_startup()
-      print(" BOOT : Gonna up the core component")
+      #print(" BOOT : Gonna up the core component")
       core.goUp()
     else:
       #return
