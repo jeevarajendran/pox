@@ -725,6 +725,7 @@ class ofp_phy_port (ofp_base):
       pass
     elif not isinstance(self.hw_addr, EthAddr):
       return "hw_addr is not a valid format"
+    print("$$$$$$$$$$$$$", self.name)
     if len(self.name) > OFP_MAX_PORT_NAME_LEN:
       return "name is too long"
     return None
@@ -3769,7 +3770,7 @@ class ofp_cs_full (ofp_header):
     return offset,length
 
   def __len__ (self):
-    return 12 #+ len(self.data)
+    return 8 #+ len(self.data)
 
   def __eq__ (self, other):
     if type(self) != type(other): return False

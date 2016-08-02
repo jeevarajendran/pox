@@ -43,6 +43,7 @@ from pox.lib.packet import *
 from pox.lib.socketcapture import CaptureSocket
 from pox.lib.recoco.recoco import *
 from pox.core import core
+from thread import *
 
 from pox.core import core
 import pox
@@ -122,7 +123,7 @@ class Connect_another_switch (Task):
     #print(" ***** Trying for another switch connection *****")
 
 
-    print(" ****** Switch : Connecting in a socket")
+    print(" ICN Switch : Connecting in a socket")
     listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     try:
@@ -270,11 +271,7 @@ class ICNSwitchBase (object):
     # buffer for packets during packet_in
     self._packet_buffer = []
 
-    #Jeeva : for now hard code the connected hosts here
-    self.hosts = {}
-    self.add_hosts(self.hosts)
-
-    l = Connect_another_switch(port=7777, address='0.0.0.0')
+    #l = Connect_another_switch(port=7777, address='0.0.0.0')
     # Map port_no -> openflow.pylibopenflow_01.ofp_phy_ports
     self.ports = {}
     self.port_stats = {}
@@ -361,16 +358,60 @@ class ICNSwitchBase (object):
       if not h: continue
       self.flow_mod_handlers[value] = h
 
+    #Jeeva : for now hard code the connected hosts here
+    self.hosts = {}
+    self.add_hosts(self.hosts)
+
   def add_hosts(self,hosts):
-    print ("***** Going to add the hosts ****** ")
+    print (" ICN SWITCH : Going to add two hosts to switch")
+
+    #Jeeva : Now use INET socket, later on change to Raw socket
+    listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    try:
+      print(dir(self))
+      listener.bind(("134.226.36.95", 7777))
+      print(" LIstening :", listener)
+    except socket.error as (errno, strerror):
+      print "Socket error"
+      return
+
+    listener.listen(16)#
+
+    for i in range(0,2) :
+      connection, new_sock = listener.accept()
+      #new_sock.send(" Hi Host"+str(i))
+      print(" ICN SWITCH : Connected to the host :" , connection.getpeername()[1])
+      in_port = connection.getpeername()[1]
+      hosts[in_port]=connection
+      #self.add_port(in_port)
+      start_new_thread(self.host_thread, (connection,in_port))
+
+  def host_thread(self,connection, in_port):
+    print (" ICN SWITCH : Started Host Thread")
+    while True:
+      # Receiving from client
+      data = connection.recv(1024)
+      raw_data = data
+      print(" Interest/data received from host : ", raw_data)
+      packet = ethernet(raw=raw_data)
+      self.rx_packet(packet, in_port)
+      if not data:
+        print (" No data")
+        break
+
+    # came out of loop
+    connection.close()
 
   def _gen_port_name (self, port_no):
+    print ("%s.%s"%(dpid_to_str(self.dpid, True).replace('-','')[:12], port_no))
     return "%s.%s"%(dpid_to_str(self.dpid, True).replace('-','')[:12], port_no)
 
   def _gen_ethaddr (self, port_no):
     return EthAddr("02%06x%04x" % (self.dpid % 0x00FFff, port_no % 0xffFF))
 
   def generate_port (self, port_no, name = None, ethaddr = None):
+    print(" In generate port function")
     dpid = self.dpid
     p = ofp_phy_port()
     p.port_no = port_no
@@ -390,9 +431,8 @@ class ICNSwitchBase (object):
     p.peer = OFPPF_10MB_HD
 
     print ("\n")
-    print (" $$$$$$$$ Generated port : ", p)
+    print (" ICN SWITCH : Generated port : ", p)
     print ("\n")
-    print (" $$$$$$$$ Generated port dir : ", dir(p))
     return p
 
   @property
@@ -613,6 +653,7 @@ class ICNSwitchBase (object):
     #Jeeva : If no match is found, rx_packet will send the packet to the controller as packet_in
     #Jeeva : 1 is the in port and controller assigns port 4 as output for this packet
 
+
     print(" \n\n\n-----------------------  1st TEST --------------- RX_PACKET - CS match------------------")
     #print(" ICN SWITCH BASE : Gonna call rx_packet")
     packet =ethernet(raw="Interest:/test/contentstorematch")
@@ -674,6 +715,15 @@ class ICNSwitchBase (object):
     # print(" ICN SWITCH BASE : Packet in message sent : ", msg.show())
     self.rx_packet(packet, 4)
     print(" -----------------------  6th TEST --------------- RX_PACKET - Data  END------------------\n\n\n")
+
+    """
+    print(" \n\n\n-----------------------  7th TEST --------------- RX_PACKET - Again PACKET IN ------------------")
+    # print(" ICN SWITCH BASE : Gonna call rx_packet")
+    packet = ethernet(raw="Interest:/test/PODANNNGAAAAAAAA")
+    # print(" ICN SWITCH BASE : Packet in message sent : ", msg.show())
+    self.rx_packet(packet, 4)
+    print(" -----------------------  7th TEST --------------- RX_PACKET - Data  END------------------\n\n\n")
+    """
 
 
   def _rx_get_config_request (self, ofp, connection):
@@ -754,10 +804,13 @@ class ICNSwitchBase (object):
     """
     print(" ICN Switch BASE: send_cs_full function ")
 
-    msg = ofp_cs_full(xid=0)
+    msg = ofp_cs_full()
 
-    #print(" ICN Switch BASE : CS Full msg :", msg)
+    print(" ICN Switch BASE : CS Full msg :", msg)
 
+    #Jeeva : Commented now , remove it
+    #$$$$$$$$$$$$$4
+    #%%%%%%%%%%%%555
     self.send(msg)
 
 
@@ -844,6 +897,7 @@ class ICNSwitchBase (object):
         Call self.table.entry_for_packet (passing the packet and in_port)
 
     """
+    #print(self)
     print(" ICN Switch BASE: rx_packet (process a dataplane packet) ")
 
     #Jeeva : Ensure the packet is an ethernet packet
@@ -851,13 +905,17 @@ class ICNSwitchBase (object):
     assert assert_type("in_port", in_port, int, none_ok=False)
 
     #Jeeva : Check whether the packet is from known port
-    port = self.ports.get(in_port)
-    if port is None:
-      self.log.warn("Got packet on missing port %i", in_port)
-      return
+    #Jeeva : Commented for now , as because new host ports are not working
+
+    if in_port not in self.hosts:
+      port = self.ports.get(in_port)
+      if port is None:
+        self.log.warn("Got packet on missing port %i", in_port)
+        return
+
 
     raw_packet = packet.raw
-    #print(" RAW Packet :", raw_packet)
+    print(" RAW Packet :", raw_packet)
     if "Data:" not in raw_packet :
       if "Interest:" in raw_packet :
         print(" This is an Interest Packet")
@@ -865,8 +923,16 @@ class ICNSwitchBase (object):
         # Jeeva : CS check
 
         content_store = self.content_store.content_store_entry_for_packet(packet, in_port)
-        if (content_store == True):
-          print(" ICN SWITCH : CS entry found")
+        if (content_store != None):
+          print(" ICN SWITCH : CS entry found : ",content_store)
+          if in_port in self.hosts:
+            print(" Connection to send the data back:", self.hosts[in_port])
+            con = self.hosts[in_port]
+            con.send(content_store)
+            print(" Sent data back to host.. Happy !!!")
+            print("\n\n")
+          else:
+            print("Have to send data to another port which is not a host")
         else:
 
           # Jeeva : PIT check
@@ -890,8 +956,9 @@ class ICNSwitchBase (object):
 
               # Jeeva : Send to controller
               print(" ICN SWITCH BASE : No Matching Entry found in any of the tables : Send to controller")
-              if port.config & OFPPC_NO_PACKET_IN:
-                return
+              if in_port not in self.hosts:
+                if port.config & OFPPC_NO_PACKET_IN:
+                  return
               buffer_id = self._buffer_packet(packet, in_port)
               if packet_data is None:
                 packet_data = packet.pack()
@@ -958,8 +1025,10 @@ class ICNSwitchBase (object):
     Sends a port_status message to the controller
     """
     try:
+      print("Trying to add port")
       port_no = port.port_no
     except:
+      print("Exception in trying to add port")
       port_no = port
       port = self.generate_port(port_no, self.dpid)
     if port_no in self.ports:
@@ -1044,33 +1113,43 @@ class ICNSwitchBase (object):
 
     def real_send (port_no, allow_in_port=False):
       print(" ICN Switch BASE : real_send " )
-      if type(port_no) == ofp_phy_port:
-        #print(" ICN Switch BASE : real_send : port_no == ofp_phy_port type")
-        port_no = port_no.port_no
-      if port_no == in_port and not allow_in_port:
-        self.log.warn("Dropping packet sent on port %i: Input port", port_no)
-        return
-      if port_no not in self.ports:
-        self.log.warn("Dropping packet sent on port %i: Invalid port", port_no)
-        return
-      if self.ports[port_no].config & OFPPC_NO_FWD:
-        self.log.warn("Dropping packet sent on port %i: Forwarding disabled",
-                      port_no)
-        return
-      if self.ports[port_no].config & OFPPC_PORT_DOWN:
-        self.log.warn("Dropping packet sent on port %i: Port down", port_no)
-        return
-      if self.ports[port_no].state & OFPPS_LINK_DOWN:
-        self.log.debug("Dropping packet sent on port %i: Link down", port_no)
-        return
-      #print(" ICN Switch BASE : real_send : Didnt drop the packet")
-      self.port_stats[port_no].tx_packets += 1
-      self.port_stats[port_no].tx_bytes += len(packet.pack()) #FIXME: Expensive
-      #print(" ICN Switch BASE : real_send : Gonna call _output_packet_physical with port_no : ", port_no)
-      self._output_packet_physical(packet, port_no)
+      if port_no != 999:
+
+        if port_no not in self.hosts:
+
+          if type(port_no) == ofp_phy_port:
+            #print(" ICN Switch BASE : real_send : port_no == ofp_phy_port type")
+            port_no = port_no.port_no
+          if port_no == in_port and not allow_in_port:
+            self.log.warn("Dropping packet sent on port %i: Input port", port_no)
+            return
+          if port_no not in self.ports:
+            self.log.warn("Dropping packet sent on port %i: Invalid port", port_no)
+            return
+          if self.ports[port_no].config & OFPPC_NO_FWD:
+            self.log.warn("Dropping packet sent on port %i: Forwarding disabled",
+                          port_no)
+            return
+          if self.ports[port_no].config & OFPPC_PORT_DOWN:
+            self.log.warn("Dropping packet sent on port %i: Port down", port_no)
+            return
+          if self.ports[port_no].state & OFPPS_LINK_DOWN:
+            self.log.debug("Dropping packet sent on port %i: Link down", port_no)
+            return
+          #print(" ICN Switch BASE : real_send : Didnt drop the packet")
+          self.port_stats[port_no].tx_packets += 1
+          self.port_stats[port_no].tx_bytes += len(packet.pack()) #FIXME: Expensive
+          #print(" ICN Switch BASE : real_send : Gonna call _output_packet_physical with port_no : ", port_no)
+          self._output_packet_physical(packet, port_no)
+        else:
+          self._output_packet_physical(packet, port_no)
+      else:
+          self._output_packet_physical(packet, port_no)
 
     #print(" ICN Switch BASE : Skipped real_send for now" )
-    if out_port < OFPP_MAX:
+    if out_port == 999 :
+      real_send(out_port)
+    elif out_port < OFPP_MAX:
       #print(" ICN Switch BASE : out_port < OFPP_MAX : Gonna call real_send")
       real_send(out_port)
     elif out_port == OFPP_IN_PORT:
@@ -1494,7 +1573,36 @@ class ICNSwitch (ICNSwitchBase, EventMixin):
     This is called by the more general _output_packet().
     """
     print(" ICN Switch : _output_packet_physical : send a packet out a single physical port")
-    self.raiseEvent(DpPacketOut(self, packet, self.ports[port_no]))
+
+    if port_no == 999:
+      print(" $$$ We have to sent the interest to 2nd host $$$")
+      print self.hosts;
+      print("I am sending the interest to 2nd host")
+      if self.hosts.values()[0]<self.hosts.values()[1]:
+        socket = self.hosts.values()[1]
+      else:
+        socket = self.hosts.values()[0]
+      print(socket)
+      print("packet raw:", packet.raw)
+      raw_packet = packet.raw
+      socket.send(raw_packet)
+    elif port_no in self.hosts:
+      socket = self.hosts[port_no]
+      raw_packet = packet.raw
+      #interest = raw_packet[len("Interest:"):-len(raw_packet[raw_packet.index(",Data:"):])]
+      #print(raw_packet.index("Data:"))
+      #data = raw_packet[-raw_packet.index("Data:"):]
+      #print((raw_packet.split(",")[1]).split("Data:")[1])
+      data_to_send = (raw_packet.split(",")[1]).split("Data:")[1]
+      socket.send(data_to_send)
+    else:
+      print(" Mocking the packet out")
+    #for var,value in self.hosts.:
+    #  if var == port_no:
+    #    print("I am sending the interest to 2nd host")
+    #    value.send(" Sample Data Interest ")
+    #Jeeva : Commented now, uncoment later
+    #self.raiseEvent(DpPacketOut(self, packet, self.ports[port_no]))
 
 class ExpireMixin (object):
   """

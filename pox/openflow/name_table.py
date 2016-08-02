@@ -1010,7 +1010,7 @@ class ContentStore(EventMixin):
 
     # Table is a list of TableEntry sorted by descending effective_priority.
     self._table = []
-    self._max_entries = 3
+    self._max_entries = 5
     self._entries_counter = 0
     self.initContentStore()
 
@@ -1172,9 +1172,9 @@ class ContentStore(EventMixin):
       #print(" Content Store : checking each entry in the content store table :", entry, "\n")
       if entry.match.interest_name == interest_name :
         #print (" Content Store entry Found : Have to send the data to the corresponding requester , which is in_port")
-        return True
+        return entry.data
     #print (" No content store entry found : Have to check in PIT for pending interests now")
-    return False
+    return None
 
   #Jeeva : This function may be useful later
   def entry_for_packet(self, packet, in_port):

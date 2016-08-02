@@ -66,7 +66,7 @@ import traceback
 
 #Jeeva : handler for CS_FULL
 
-def handle_CS_FULL (con): #A
+def handle_CS_FULL (con,msg): #A
   print("***** Handling CS Full ***** ")
   e = con.ofnexus.raiseEventNoErrors(CsFull, con)
   if e is None or e.halt != True:
@@ -745,7 +745,7 @@ class Connection (EventMixin):
     try:
       d = self.sock.recv(2048)
       #print("\n\n\n\n\n")
-      print(" OF : Controller RECEIVED data from switch")
+      print(" OF : Controller RECEIVED data from switch :", d)
 
     except:
       return False
@@ -754,7 +754,7 @@ class Connection (EventMixin):
     self.buf += d
     buf_len = len(self.buf)
 
-    #print("$$$$$$$$ Buf len = ", buf_len)
+    print("$$$$$$$$ Buf len = ", buf_len)
 
     offset = 0
     while buf_len - offset >= 8: # 8 bytes is minimum OF message size
