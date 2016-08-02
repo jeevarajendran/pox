@@ -270,6 +270,10 @@ class ICNSwitchBase (object):
     # buffer for packets during packet_in
     self._packet_buffer = []
 
+    #Jeeva : for now hard code the connected hosts here
+    self.hosts = {}
+    self.add_hosts(self.hosts)
+
     l = Connect_another_switch(port=7777, address='0.0.0.0')
     # Map port_no -> openflow.pylibopenflow_01.ofp_phy_ports
     self.ports = {}
@@ -356,6 +360,9 @@ class ICNSwitchBase (object):
       h = getattr(self, "_flow_mod_" + name, None)
       if not h: continue
       self.flow_mod_handlers[value] = h
+
+  def add_hosts(self,hosts):
+    print ("***** Going to add the hosts ****** ")
 
   def _gen_port_name (self, port_no):
     return "%s.%s"%(dpid_to_str(self.dpid, True).replace('-','')[:12], port_no)
