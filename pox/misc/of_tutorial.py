@@ -152,6 +152,7 @@ class Tutorial (object):
         self.resend_packet(packet, port)  # Jeeva : Change from packet to packet_in later
       else:
         print (" OF_TUTORIAL : This interest is not in the controller database :", interest_name)
+        print (" OF_TUTORIAL : Please ask the switch to drop the packet")
 
     #if interest_name == "/test/hostfetch":
 

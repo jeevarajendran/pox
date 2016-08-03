@@ -66,6 +66,7 @@ class ethernet(packet_base):
   SCSI_TYPE  = 0x889a
   ATA_TYPE   = 0x88a2
   QINQ_TYPE  = 0x9100
+  ICN_TYPE = 0x1000 #Jeeva
 
   INVALID_TYPE = 0xffff
 
@@ -93,6 +94,9 @@ class ethernet(packet_base):
       ethernet.type_parsers[ethernet.MPLS_MC_TYPE] = mpls
       from llc import llc
       ethernet._llc = llc
+      #Jeeva
+      from icn import icn
+      ethernet.type_parsers[ethernet.ICN_TYPE] = icn
 
     self.prev = prev
 
@@ -167,6 +171,7 @@ class ethernet(packet_base):
   def _to_str(self):
     s = ''.join(('[',str(EthAddr(self.src)),'>',str(EthAddr(self.dst)),' ',
                 ethernet.getNameForType(self.type),']'))
+    print self.type
     return s
 
   def hdr(self, payload):

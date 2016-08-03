@@ -716,14 +716,23 @@ class ICNSwitchBase (object):
     self.rx_packet(packet, 4)
     print(" -----------------------  6th TEST --------------- RX_PACKET - Data  END------------------\n\n\n")
 
-    """
-    print(" \n\n\n-----------------------  7th TEST --------------- RX_PACKET - Again PACKET IN ------------------")
-    # print(" ICN SWITCH BASE : Gonna call rx_packet")
-    packet = ethernet(raw="Interest:/test/PODANNNGAAAAAAAA")
+    #7th is there : It is from Host 1 to Host 2
+    #Host 1 send out interest for /test/hostmatch
+    #The interest goes to controller
+    #and then to Host 2
+    #Data from Host 2 reached back to Host 1 through the switch using the PIT
+
+    print(" \n\n\n-----------------------  8th TEST --------------- RX_PACKET - IP packet ------------------")
+    #print(" ICN SWITCH BASE : Gonna call rx_packet")
+    ip_packet = ipv4(raw="IP raw Test") #Jeeva : IPv4 parse method expecting raw should contain all the necessary fields like tos,...
+    packet = ethernet(raw="Ethernet Raw Test Test Test Test")
+    packet.set_payload(ip_packet)
+
+    #packet.set_payload(ip_packet)
     # print(" ICN SWITCH BASE : Packet in message sent : ", msg.show())
     self.rx_packet(packet, 4)
-    print(" -----------------------  7th TEST --------------- RX_PACKET - Data  END------------------\n\n\n")
-    """
+    print(" -----------------------  6th TEST --------------- RX_PACKET - IP PACKET  END------------------\n\n\n")
+
 
 
   def _rx_get_config_request (self, ofp, connection):
@@ -907,11 +916,30 @@ class ICNSwitchBase (object):
     #Jeeva : Check whether the packet is from known port
     #Jeeva : Commented for now , as because new host ports are not working
 
-    if in_port not in self.hosts:
+    print (dir(packet.payload))
+    if in_port not in self.hosts: #Jeeva
       port = self.ports.get(in_port)
       if port is None:
         self.log.warn("Got packet on missing port %i", in_port)
         return
+
+    print(" \n\n\n\n\n\n")
+    print(" *$*$$$$$$$****** FUll packet Received at Switch :", dir(packet))
+    print(" *$*$$$$$$$****** FUll packet Received at Switch dst:", packet.dst)
+    print(" *$*$$$$$$$****** FUll packet Received at Switch ethertype:", packet.effective_ethertype)
+    print(" *$*$$$$$$$****** FUll packet Received at Switch ethertype:", packet.getNameForType(packet.effective_ethertype))
+    print(" *$*$$$$$$$****** FUll packet Received at Switch IP type:", packet.IP_TYPE)
+    print(" *$*$$$$$$$****** FUll packet Received at Switch Pay Header :", packet.hdr(packet.payload))
+    #print(" *$*$$$$$$$****** FUll packet Received at Switch :", packet.m)
+    print(" *$*$$$$$$$****** FUll packet Received at Switch next:", packet.next)
+    print(" *$*$$$$$$$****** FUll packet Received at Switch parsed:", packet.parsed)
+    print(" *$*$$$$$$$****** FUll packet Received at Switch payload:", packet.payload)
+    print(" *$*$$$$$$$****** FUll packet Received at Switch raw:", packet.raw)
+    print(" *$*$$$$$$$****** FUll packet Received at Switch src:", packet.src)
+    print(" *$*$$$$$$$****** FUll packet Received at Switch type:", packet.type)
+
+    print(" *$*$$$$$$$****** FUll packet Received at Switch String :", packet._to_str())
+    #print(" *$*$$$$$$$****** FUll packet Received at Switch :", packet.un)
 
 
     raw_packet = packet.raw
