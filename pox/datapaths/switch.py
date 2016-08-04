@@ -388,6 +388,8 @@ class ICNSwitchBase (object):
     while True:
       packet = s.recvfrom(65565)
 
+      original_packet = packet
+
       # packet string from tuple
       packet = packet[0]
 
@@ -412,12 +414,14 @@ class ICNSwitchBase (object):
           print ('****** Protocol other than TCP/UDP/ICMP ***** : ', eth_protocol)
           print 'Destination MAC : ' + eth_addr(packet[0:6]) + ' Source MAC : ' + eth_addr(
             packet[6:12]) + ' Protocol : ' + str(eth_protocol)
-          print ('Received packet : ', packet)
-          print ('Length of packet : ', len(packet))
-          print ('Eth_header : ', eth_header)
-          print ('eth : ', eth)
           print ('Data : ', data)
           print(" Interest/data received from host : ", data)
+
+          #face = (original_packet[1][0].split("\'"))[0]
+
+          face = original_packet[1][0]
+          print face
+
           packet = ethernet(raw=data)
           self.rx_packet(packet, 4)
 
@@ -948,6 +952,136 @@ class ICNSwitchBase (object):
     if data is not None:
       err.data = data
     self.send(err, connection = connection)
+
+  def rx_packet_from_face (self, packet, face, packet_data = None):
+    """
+    process a dataplane packet
+
+    packet: an instance of ethernet
+    in_port: the integer port number
+    packet_data: packed version of packet if available
+
+    Jeeva:
+      Get the ethernet packet , check for matching entry in name table .If no matching entry found ,
+      send to controller as packet_in message
+
+      To check for match :
+        Call self.table.entry_for_packet (passing the packet and in_port)
+
+    """
+    #print(self)
+    print(" ICN Switch BASE: rx_packet (process a dataplane packet) ")
+
+    #Jeeva : Ensure the packet is an ethernet packet
+    assert assert_type("packet", packet, ethernet, none_ok=False)
+    #assert assert_type("in_port", in_port, int, none_ok=False)
+
+    #Jeeva : Check whether the packet is from known port
+    #Jeeva : Commented for now , as because new host ports are not working
+
+    print (dir(packet.payload))
+
+    print(" \n\n\n\n\n\n")
+    print(" *$*$$$$$$$****** FUll packet Received at Switch :", dir(packet))
+    print(" *$*$$$$$$$****** FUll packet Received at Switch dst:", packet.dst)
+    print(" *$*$$$$$$$****** FUll packet Received at Switch ethertype:", packet.effective_ethertype)
+    print(" *$*$$$$$$$****** FUll packet Received at Switch ethertype:", packet.getNameForType(packet.effective_ethertype))
+    print(" *$*$$$$$$$****** FUll packet Received at Switch IP type:", packet.IP_TYPE)
+    print(" *$*$$$$$$$****** FUll packet Received at Switch Pay Header :", packet.hdr(packet.payload))
+    #print(" *$*$$$$$$$****** FUll packet Received at Switch :", packet.m)
+    print(" *$*$$$$$$$****** FUll packet Received at Switch next:", packet.next)
+    print(" *$*$$$$$$$****** FUll packet Received at Switch parsed:", packet.parsed)
+    print(" *$*$$$$$$$****** FUll packet Received at Switch payload:", packet.payload)
+    print(" *$*$$$$$$$****** FUll packet Received at Switch raw:", packet.raw)
+    print(" *$*$$$$$$$****** FUll packet Received at Switch src:", packet.src)
+    print(" *$*$$$$$$$****** FUll packet Received at Switch type:", packet.type)
+
+    print(" *$*$$$$$$$****** FUll packet Received at Switch String :", packet._to_str())
+    #print(" *$*$$$$$$$****** FUll packet Received at Switch :", packet.un)
+
+
+    raw_packet = packet.raw
+    print(" RAW Packet :", raw_packet)
+    if "Data:" not in raw_packet :
+      if "Interest:" in raw_packet :
+        print(" This is an Interest Packet")
+
+        # Jeeva : CS check
+
+        content_store = self.content_store.content_store_entry_for_packet(packet, face)
+        if (content_store != None):
+          print(" ICN SWITCH : CS entry found : ",content_store)
+          '''
+          if in_port in self.hosts:
+            print(" Connection to send the data back:", self.hosts[in_port])
+            con = self.hosts[in_port]
+            con.send(content_store)
+            print(" Sent data back to host.. Happy !!!")
+            print("\n\n")
+          else:
+            print("Have to send data to another port which is not a host")
+          '''
+        else:
+
+          # Jeeva : PIT check
+          pit_entry = self.pit_table.pit_entry_for_packet(packet, face)
+          if (pit_entry == True):
+            print ("IN SWITCH : PIT entry Found in the table, Added the port to the waiting list")
+          else:
+
+            # Jeeva : FIB check
+            print ("IN SWITCH : No PIT entry Found in the table, Gonna look in the FIB")
+            self._lookup_count += 1
+            fib_entry = self.table.entry_for_packet(packet, face)
+            #print(" ICN SWITCH BASE , rx_packet , FIB entry : ", fib_entry)
+            if fib_entry is not None:
+              print(" ICN SWITCH BASE : FIB Entry Found")
+              self._matched_count += 1
+              fib_entry.touch_packet(len(packet))
+              print(" ICN SWITCH BASE : Gonna process the packet")
+              self._process_actions_for_packet(fib_entry.actions, packet, face)
+            else:
+
+              # Jeeva : Send to controller
+              print(" ICN SWITCH BASE : No Matching Entry found in any of the tables : Send to controller")
+              if in_port not in self.hosts:
+                if port.config & OFPPC_NO_PACKET_IN:
+                  return
+              buffer_id = self._buffer_packet(packet, in_port)
+              if packet_data is None:
+                packet_data = packet.pack()
+              self.send_packet_in(in_port, buffer_id, packet_data,
+                                  reason=OFPR_NO_MATCH, data_length=self.miss_send_len)
+              if "Interest" in raw_packet :
+                print(" ICN SWITCH BASE : Sent the interest packet to controller, gonna add in PIT")
+                match = of.ofp_match.from_packet(packet)
+                new_pit_entry = PitTableEntry(match=match,ports=[in_port])
+                self.pit_table.add_entry(new_pit_entry)
+
+      else :
+        print(" Neither Interest Nor Data packet")
+    else:
+      print(" This is a Data Packet")
+      #Extract Interest and Data from the packet
+      interest = raw_packet[len("Interest:"):-len(raw_packet[raw_packet.index(",Data:"):])]
+      data = raw_packet[-raw_packet.index("Data:"):]
+      #print(" Interest :", interest)
+      #print(" Data :", data)
+      ports = self.pit_table.fetch_faces_from_pit_entry(interest)
+      if (ports != True):
+        print ("IN SWITCH : faces are returned :", ports)
+        for port in ports:
+          self._output_packet(packet, port, in_port)
+
+      #Add to content store
+      is_cs_full = self.content_store._entries_counter
+      #print(" **************** : Content Store Status :", is_cs_full)
+      if is_cs_full == 1:
+        print (" Content Store is Full")
+        self.send_cs_full()
+        #Send the message
+
+      #Jeeva : check for waiting faces in PIT
 
   def rx_packet (self, packet, in_port, packet_data = None):
     """
