@@ -44,6 +44,8 @@ from pox.lib.socketcapture import CaptureSocket
 from pox.lib.recoco.recoco import *
 from pox.core import core
 from thread import *
+from struct import *
+import socket, sys
 
 from pox.core import core
 import pox
@@ -360,7 +362,64 @@ class ICNSwitchBase (object):
 
     #Jeeva : for now hard code the connected hosts here
     self.hosts = {}
-    self.add_hosts(self.hosts)
+    #self.add_hosts(self.hosts)
+
+    print(" *** Gonna call sniff faces function *** ")
+    self.sniff_faces()
+
+  def sniff_faces(self):
+    start_new_thread(self.sniff_thread, ())
+
+  def sniff_thread(self):
+    print(" *** Started Sniff thread *** ")
+    def eth_addr(a):
+      b = "%.2x:%.2x:%.2x:%.2x:%.2x:%.2x" % (ord(a[0]), ord(a[1]), ord(a[2]), ord(a[3]), ord(a[4]), ord(a[5]))
+      return b
+
+    # create a AF_PACKET type raw socket (thats basically packet level)
+    # define ETH_P_ALL    0x0003          /* Every packet (be careful!!!) */
+    try:
+      s = socket.socket(socket.AF_PACKET, socket.SOCK_RAW, socket.ntohs(0x0003))
+    except socket.error, msg:
+      print 'Socket could not be created. Error Code : ' + str(msg[0]) + ' Message ' + msg[1]
+      sys.exit()
+
+    # receive a packet
+    while True:
+      packet = s.recvfrom(65565)
+
+      # packet string from tuple
+      packet = packet[0]
+
+      # parse ethernet header
+      eth_length = 14
+
+      eth_header = packet[:eth_length]
+      data = packet[eth_length:]
+      eth = unpack('!6s6sH', eth_header)
+      eth_protocol = socket.ntohs(eth[2])
+      #print 'Destination MAC : ' + eth_addr(packet[0:6]) + ' Source MAC : ' + eth_addr(
+      #  packet[6:12]) + ' Protocol : ' + str(eth_protocol)
+
+      # Parse IP packets, IP Protocol number = 8
+      if eth_protocol == 8:
+        # print(" IP Packet :", eth_protocol)
+        '''
+        Do nothing
+        '''
+      else:
+        if eth_protocol == 1402:
+          print ('****** Protocol other than TCP/UDP/ICMP ***** : ', eth_protocol)
+          print 'Destination MAC : ' + eth_addr(packet[0:6]) + ' Source MAC : ' + eth_addr(
+            packet[6:12]) + ' Protocol : ' + str(eth_protocol)
+          print ('Received packet : ', packet)
+          print ('Length of packet : ', len(packet))
+          print ('Eth_header : ', eth_header)
+          print ('eth : ', eth)
+          print ('Data : ', data)
+          print(" Interest/data received from host : ", data)
+          packet = ethernet(raw=data)
+          self.rx_packet(packet, 4)
 
   def add_hosts(self,hosts):
     print (" ICN SWITCH : Going to add two hosts to switch")
