@@ -46,6 +46,7 @@ from pox.core import core
 from thread import *
 from struct import *
 import socket, sys
+#from socket import *
 
 from pox.core import core
 import pox
@@ -272,11 +273,17 @@ class ICNSwitchBase (object):
 
     # buffer for packets during packet_in
     self._packet_buffer = []
+    self._packet_buffer_face = []
 
     #l = Connect_another_switch(port=7777, address='0.0.0.0')
     # Map port_no -> openflow.pylibopenflow_01.ofp_phy_ports
     self.ports = {}
     self.port_stats = {}
+
+    #Jeeva faces list
+
+    self.faces = {'eth0':1,'lo':2}
+    self.face_thread = {}
 
     print(" ICN SWITCH BASE: Add port")
     for port in ports:
@@ -367,11 +374,13 @@ class ICNSwitchBase (object):
     print(" *** Gonna call sniff faces function *** ")
     self.sniff_faces()
 
+  #Jeeva : Functions for the switch to listen on faces for the data
   def sniff_faces(self):
-    start_new_thread(self.sniff_thread, ())
+    for k,v in self.faces.iteritems():
+      start_new_thread(self.sniff_thread, (k,v))
 
-  def sniff_thread(self):
-    print(" *** Started Sniff thread *** ")
+  def sniff_thread(self,interface,face):
+    print(" *** Started Sniff thread for the interface :", interface)
     def eth_addr(a):
       b = "%.2x:%.2x:%.2x:%.2x:%.2x:%.2x" % (ord(a[0]), ord(a[1]), ord(a[2]), ord(a[3]), ord(a[4]), ord(a[5]))
       return b
@@ -385,7 +394,10 @@ class ICNSwitchBase (object):
       sys.exit()
 
     # receive a packet
+    s.bind((interface, 0))
+    self.face_thread[face] = s
     while True:
+
       packet = s.recvfrom(65565)
 
       original_packet = packet
@@ -421,9 +433,10 @@ class ICNSwitchBase (object):
 
           face = original_packet[1][0]
           print face
+          print self.faces[face]
 
           packet = ethernet(raw=data)
-          self.rx_packet(packet, 4)
+          self.rx_packet_from_face(packet, self.faces[face])
 
   def add_hosts(self,hosts):
     print (" ICN SWITCH : Going to add two hosts to switch")
@@ -716,7 +729,7 @@ class ICNSwitchBase (object):
     #Jeeva : If no match is found, rx_packet will send the packet to the controller as packet_in
     #Jeeva : 1 is the in port and controller assigns port 4 as output for this packet
 
-
+    '''
     print(" \n\n\n-----------------------  1st TEST --------------- RX_PACKET - CS match------------------")
     #print(" ICN SWITCH BASE : Gonna call rx_packet")
     packet =ethernet(raw="Interest:/test/contentstorematch")
@@ -794,8 +807,8 @@ class ICNSwitchBase (object):
     #packet.set_payload(ip_packet)
     # print(" ICN SWITCH BASE : Packet in message sent : ", msg.show())
     self.rx_packet(packet, 4)
-    print(" -----------------------  6th TEST --------------- RX_PACKET - IP PACKET  END------------------\n\n\n")
-
+    print(" -----------------------  8th TEST --------------- RX_PACKET - IP PACKET  END------------------\n\n\n")
+    '''
 
 
   def _rx_get_config_request (self, ofp, connection):
@@ -922,6 +935,32 @@ class ICNSwitchBase (object):
 
     self.send(msg)
 
+
+  #Jeeva
+
+  def send_packet_in_face (self, face, buffer_id=None, packet=b'', reason=None,
+                      data_length=None):
+    """
+    Send PacketIn
+    """
+    print(" ICN Switch BASE: send_packet_in function ")
+    #Jeeva : packet.pack(), This function has to be changed to pack the ICN packet
+    if hasattr(packet, 'pack'):
+      packet = packet.pack()
+    assert assert_type("packet", packet, bytes)
+    self.log.debug("Send PacketIn")
+    if reason is None:
+      reason = OFPR_NO_MATCH
+    if data_length is not None and len(packet) > data_length:
+      if buffer_id is not None:
+        packet = packet[:data_length]
+
+    # Jeeva : This in_port should be changed to face later
+    msg = ofp_packet_in(xid = 0, in_port = 1, buffer_id = buffer_id,
+                        reason = reason, data = packet)
+
+    self.send(msg)
+
   def send_port_status (self, port, reason):
     """
     Send port status
@@ -953,9 +992,10 @@ class ICNSwitchBase (object):
       err.data = data
     self.send(err, connection = connection)
 
+  #Jeeva : Method to handle the input packet from the face
   def rx_packet_from_face (self, packet, face, packet_data = None):
     """
-    process a dataplane packet
+    process a dataplane packet in a face
 
     packet: an instance of ethernet
     in_port: the integer port number
@@ -1022,7 +1062,7 @@ class ICNSwitchBase (object):
             print("Have to send data to another port which is not a host")
           '''
         else:
-
+          print("ICN SWITCH : No CS Entry found : Gonna look in PIT")
           # Jeeva : PIT check
           pit_entry = self.pit_table.pit_entry_for_packet(packet, face)
           if (pit_entry == True):
@@ -1044,18 +1084,18 @@ class ICNSwitchBase (object):
 
               # Jeeva : Send to controller
               print(" ICN SWITCH BASE : No Matching Entry found in any of the tables : Send to controller")
-              if in_port not in self.hosts:
-                if port.config & OFPPC_NO_PACKET_IN:
-                  return
-              buffer_id = self._buffer_packet(packet, in_port)
+              #if in_port not in self.hosts:
+              #  if port.config & OFPPC_NO_PACKET_IN:
+              #    return
+              buffer_id = self._buffer_packet_face(packet, face)
               if packet_data is None:
                 packet_data = packet.pack()
-              self.send_packet_in(in_port, buffer_id, packet_data,
+              self.send_packet_in_face(face, buffer_id, packet_data,
                                   reason=OFPR_NO_MATCH, data_length=self.miss_send_len)
               if "Interest" in raw_packet :
                 print(" ICN SWITCH BASE : Sent the interest packet to controller, gonna add in PIT")
                 match = of.ofp_match.from_packet(packet)
-                new_pit_entry = PitTableEntry(match=match,ports=[in_port])
+                new_pit_entry = PitTableEntry(match=match,faces=[face])
                 self.pit_table.add_entry(new_pit_entry)
 
       else :
@@ -1316,6 +1356,43 @@ class ICNSwitchBase (object):
     """
     self.log.info("Sending packet %s out port %s", str(packet), port_no)
 
+  #Jeeva
+
+  def _output_packet_face(self,packet,face,in_port=None,max_len=None):
+    print("\n\n")
+    print("-------------------------------------")
+    print(" Have to sent the packet out in the face")
+    print("-------------------------------------")
+    print("Packet :", packet)
+    print("Face :", face)
+    print("\n\n")
+
+    s = socket.socket(socket.AF_PACKET, socket.SOCK_RAW, socket.ntohs(0x0003))
+
+    # print ("eth_type :", eth_type)
+    # print ("src :", src)
+    # print ("dst :", dst)
+    # print ("payload :", payload)
+    # print ("Socket :", s)
+
+    # From the docs: "For raw packet
+    # sockets the address is a tuple (ifname, proto [,pkttype [,hatype]])"
+    interface = None
+    src = "\xFE\xED\xFA\xCE\xBE\xEF"
+    dst = "\xFE\xED\xFA\xCE\xBE\xEF"
+    eth_type = "\x7A\x05"
+    payload = packet.raw
+    '''
+    for k,v in self.faces.iteritems():
+      if(face==v) :
+        interface = k
+    s.bind((interface, 0))
+    print ("***** Listening on ", interface)
+    s.send(src + dst + eth_type + payload)
+    '''
+    self.face_thread[face].send(src + dst + eth_type + payload)
+    print("***** Sent Data to Next Hob ***** ")
+
   def _output_packet (self, packet, out_port, in_port, max_len=None):
     """
     send a packet out some port
@@ -1421,6 +1498,27 @@ class ICNSwitchBase (object):
       return None
     self._packet_buffer.append( (packet, in_port) )
     return len(self._packet_buffer)
+
+  #Jeeva
+
+  def _buffer_packet_face (self, packet, face=None):
+    """
+    Buffer packet and return buffer ID
+
+    If no buffer is available, return None.
+    """
+    # Do we have an empty slot?
+    for (i, value) in enumerate(self._packet_buffer_face):
+      if value is None:
+        # Yes -- use it
+        self._packet_buffer_face[i] = (packet, face)
+        return i + 1
+    # No -- create a new slow
+    if len(self._packet_buffer_face) >= self.max_buffers:
+      # No buffers available!
+      return None
+    self._packet_buffer_face.append( (packet, face) )
+    return len(self._packet_buffer_face)
 
   def _process_actions_for_packet_from_buffer (self, actions, buffer_id,
                                                ofp=None):
@@ -1580,6 +1678,12 @@ class ICNSwitchBase (object):
     match=ofp_match(interest_name=action.interest_name)
     self.pit_table.add_entry(PitTableEntry(match=match,ports=action.ports))
     return True
+
+  #Jeeva : Action to send output in a face
+  def _action_outputface (self, action, packet, in_port=None):
+    print(" ICN SWITCH BASE : _action_output ")
+    self._output_packet_face(packet, action.face, in_port, action.max_len)
+    return packet
 
 
   def _action_output (self, action, packet, in_port):

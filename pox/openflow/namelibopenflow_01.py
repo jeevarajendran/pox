@@ -1551,6 +1551,55 @@ class ofp_action_addpit (ofp_action_base):
     outstr += prefix + 'max_len: ' + str(self.max_len) + '\n'
     return outstr
 
+@openflow_action('OFPAT_OUTPUTFACE', 901)
+class ofp_action_outputface (ofp_action_base):
+  def __init__ (self, **kw):
+    print(" ****** NAME LIB : ofp_action_output_face ")
+    #print(" NAME LIB : ofp_action_output : kw :", kw)
+    self.face = None # Purposely bad -- require specification
+    self.max_len = 0xffFF
+    #print(" NAME LIB : ofp_action_output : self.port before calling initHelper :", self.port)
+    initHelper(self, kw)
+    #print(" NAME LIB : ofp_action_output : self.port after calling initHelper :", self.port)
+
+  def pack (self):
+    #if self.port != OFPP_CONTROLLER:
+    #  self.max_len = 0
+
+    assert self._assert()
+
+    packed = b""
+    packed += struct.pack("!HHHH", self.type, len(self), self.face,
+                          self.max_len)
+    return packed
+
+  def unpack (self, raw, offset=0):
+    _offset = offset
+    offset,(self.type, length, self.face, self.max_len) = \
+        _unpack("!HHHH", raw, offset)
+    assert offset - _offset == len(self)
+    return offset
+
+  @staticmethod
+  def __len__ ():
+    return 8
+
+  def __eq__ (self, other):
+    if type(self) != type(other): return False
+    if self.type != other.type: return False
+    if len(self) != len(other): return False
+    if self.face != other.face: return False
+    if self.max_len != other.max_len: return False
+    return True
+
+  def show (self, prefix=''):
+    outstr = ''
+    outstr += prefix + 'type: ' + str(self.type) + '\n'
+    outstr += prefix + 'len: ' + str(len(self)) + '\n'
+    outstr += prefix + 'face: ' + str(self.face) + '\n'
+    outstr += prefix + 'max_len: ' + str(self.max_len) + '\n'
+    return outstr
+
 
 @openflow_action('OFPAT_OUTPUT', 0)
 class ofp_action_output (ofp_action_base):

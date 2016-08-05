@@ -47,7 +47,7 @@ class Tutorial (object):
     # which switch port (keys are MACs, values are ports).
     self.mac_to_port = {}
     self.name_table = {'/test/contentstorematch':4,'/test/pitmatch':3,'/test/fibmatch':2,
-                       '/test/nomatch':1,'/test/hostmatch':999}
+                       '/test/nomatch':1,'/test/hostmatch':2} #Jeeva : change 3 back to 999 for the hostmatch test to work
 
     self.content_dict = {'/test/data1':"Sample_data_1",'/test/data2':"Sample_data_2",'/test/data3':"Sample_data_3",
                          '/test/data4': "Sample_data_4",'/test/controllerhasdata':"Data_for_controller_has_data"}
@@ -83,6 +83,26 @@ class Tutorial (object):
 
     # Add an action to send to the specified port
     action = of.ofp_action_output(port = out_port)
+    msg.actions.append(action)
+
+    log.debug(" OF_TUTORIAL : Message being sent on the connection : %s " % msg)
+    # Send message to switch
+    self.connection.send(msg)
+    log.debug(" OF_TUTORIAL : Message sent to the switch")
+    log.debug(" OF_TUTORIAL : --------------------------")
+
+
+  def resend_packet_face(self, packet_in, face):
+    """
+    Instructs the switch to resend a packet that it had sent to us.
+    "packet_in" is the ofp_packet_in object the switch had sent to the
+    controller due to a table-miss.
+    """
+    msg = of.ofp_packet_out()
+    msg.data = packet_in
+
+    # Add an action to send to the specified port
+    action = of.ofp_action_outputface(face=face)
     msg.actions.append(action)
 
     log.debug(" OF_TUTORIAL : Message being sent on the connection : %s " % msg)
@@ -132,7 +152,7 @@ class Tutorial (object):
     else: #Check in Name Table
       print(" Interest Name :", interest_name)
       if interest_name in self.name_table:
-        port = self.name_table[interest_name]
+        face = self.name_table[interest_name]
         #print("OF_TUTORIAL : Port to send :", port)
 
         #Jeeva : push a flow mod message
@@ -143,13 +163,13 @@ class Tutorial (object):
         msg.match = of.ofp_match.from_packet(packet)
         msg.idle_timeout = 77
         msg.hard_timeout = 77
-        msg.actions.append(of.ofp_action_output(port=port))
+        msg.actions.append(of.ofp_action_outputface(face=face))
         #msg.data = event.ofp
         self.connection.send(msg)
         #print("OF_TUTORIAL : Sent Flow Mod message")
 
         print(" OF_TUTORIAL : Gonna resend the packet in the corressponding port through switch")
-        self.resend_packet(packet, port)  # Jeeva : Change from packet to packet_in later
+        self.resend_packet_face(packet, face)  # Jeeva : Change from packet to packet_in later
       else:
         print (" OF_TUTORIAL : This interest is not in the controller database :", interest_name)
         print (" OF_TUTORIAL : Please ask the switch to drop the packet")

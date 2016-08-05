@@ -422,7 +422,7 @@ class PitTableEntry(object):
   """
 
   def __init__(self, priority=OFP_DEFAULT_PRIORITY, cookie=0, idle_timeout=0,
-               hard_timeout=0, flags=0, match=ofp_match(), ports=[], now=None):
+               hard_timeout=0, flags=0, match=ofp_match(), faces=[], now=None):
     """
     Initialize name table entry
     """
@@ -439,7 +439,7 @@ class PitTableEntry(object):
     #self.match = match
     #self.actions = actions
     self.match = match
-    self.ports = ports
+    self.faces = faces
     #self.buffer_id = buffer_id
     # self.faces = {1:2,2:3,3:4}
 
@@ -451,7 +451,7 @@ class PitTableEntry(object):
                           hard_timeout=flow_mod.hard_timeout,
                           flags=flow_mod.flags,
                           match=flow_mod.match,
-                          ports=flow_mod.ports
+                          faces=flow_mod.faces
                           )
 
   def to_flow_mod(self, flags=None, **kw):
@@ -461,7 +461,7 @@ class PitTableEntry(object):
                         match=self.match,
                         idle_timeout=self.idle_timeout,
                         hard_timeout=self.hard_timeout,
-                        ports=self.ports,
+                        faces=self.faces,
                         #buffer_id=self.buffer_id,
                         flags=flags, **kw)
 
@@ -472,7 +472,7 @@ class PitTableEntry(object):
     """
     return self.priority if self.match.is_wildcarded else (1 << 16) + 1
 
-  def is_matched_by(self, match, priority=None, strict=False, out_port=None):
+  def is_matched_by(self, match, priority=None, strict=False, face=None):
     """
     Tests whether a given match object matches this entry
 
@@ -481,13 +481,13 @@ class PitTableEntry(object):
     If out_port is any value besides None, the the flow entry must contain an
     output action to the specified port.
     """
-    match_a = lambda a: isinstance(a, ofp_action_output) and a.port == out_port
-    port_matches = (out_port is None) or any(match_a(a) for a in self.actions)
+    match_a = lambda a: isinstance(a, ofp_action_output) and a.face == face
+    face_matches = (face is None) or any(match_a(a) for a in self.actions)
 
     if strict:
-      return port_matches and self.match == match and self.priority == priority
+      return face_matches and self.match == match and self.priority == priority
     else:
-      return port_matches and match.matches_with_wildcards(self.match)
+      return face_matches and match.matches_with_wildcards(self.match)
 
   def touch_packet(self, byte_count, now=None):
     """
@@ -535,7 +535,7 @@ class PitTableEntry(object):
     outstr += "idle_timeout=%d, " % self.idle_timeout
     outstr += "hard_timeout=%d, " % self.hard_timeout
     outstr += "match=%s, " % self.match
-    outstr += "ports=%s, " % repr(self.ports)
+    outstr += "faces=%s, " % repr(self.faces)
     #outstr += "buffer_id=%s" % str(self.buffer_id)
     return outstr
 
@@ -615,7 +615,7 @@ class PitTable(EventMixin):
 
     #Entry 2
     match = ofp_match(interest_name="/test/pitmatch")
-    entry = PitTableEntry(match=match, ports=[2, 3])
+    entry = PitTableEntry(match=match, faces=[2, 3])
     print (
         " PIT : Created an entry in PIT table for the prefix: /test/pitmatch")
     self.add_entry(entry)
@@ -671,17 +671,17 @@ class PitTable(EventMixin):
     self._dirty()
     self.raiseEvent(PitTableModification(removed=[entry], reason=reason))
 
-  def matching_entries(self, match, priority=0, strict=False, out_port=None):
+  def matching_entries(self, match, priority=0, strict=False, face=None):
     print(" PIT : matching_entries function : Entries for the given match")
-    entry_match = lambda e: e.is_matched_by(match, priority, strict, out_port)
+    entry_match = lambda e: e.is_matched_by(match, priority, strict, face)
     return [entry for entry in self._table if entry_match(entry)]
 
-  def flow_stats(self, match, out_port=None, now=None):
-    mc_es = self.matching_entries(match=match, strict=False, out_port=out_port)
+  def flow_stats(self, match, face=None, now=None):
+    mc_es = self.matching_entries(match=match, strict=False, face=face)
     return [e.flow_stats(now) for e in mc_es]
 
-  def aggregate_stats(self, match, out_port=None):
-    mc_es = self.matching_entries(match=match, strict=False, out_port=out_port)
+  def aggregate_stats(self, match, face=None):
+    mc_es = self.matching_entries(match=match, strict=False, face=face)
     packet_count = 0
     byte_count = 0
     flow_count = 0
@@ -725,27 +725,27 @@ class PitTable(EventMixin):
     self._remove_specific_entries(hard, OFPRR_HARD_TIMEOUT)
 
   def remove_matching_entries(self, match, priority=0, strict=False,
-                              out_port=None, reason=None):
+                              face=None, reason=None):
     print(" PIT : remove_matching_entries")
-    remove_flows = self.matching_entries(match, priority, strict, out_port)
+    remove_flows = self.matching_entries(match, priority, strict, face)
     self._remove_specific_entries(remove_flows, reason=reason)
     return remove_flows
 
-  def pit_entry_for_packet(self, packet, in_port):
+  def pit_entry_for_packet(self, packet, face):
     # Jeeva : Check for PIT
     print(" PIT : In pit_entry_for_packet function")
-    packet_match = ofp_match.from_packet(packet, in_port, spec_frags=True)
+    packet_match = ofp_match.from_packet(packet, in_port=None, spec_frags=True)
     interest_name = packet_match.interest_name
 
     for entry in self._table:
       #print(" PIT : checking each entry in the PIT table :", entry, "\n")
       if entry.match.interest_name == interest_name :
         #print (" PIT : Entry Found: Adding the input port to the list")
-        if in_port not in entry.ports :
-          entry.ports.append(in_port)
+        if face not in entry.faces :
+          entry.faces.append(face)
         else:
-          print(" PIT : in_port is already in the ports list")
-        print (" PIT : Ports list :", entry.ports)
+          print(" PIT : face is already in the faces list")
+        print (" PIT : faces list :", entry.faces)
         return True
 
     return False
@@ -760,12 +760,12 @@ class PitTable(EventMixin):
       #print(" PIT : checking each entry in the PIT table :", entry, "\n")
       if entry.match.interest_name == interest_name:
         #print (" PIT : Entry Found: Returning the ports")
-        return entry.ports
+        return entry.faces
 
     return None
 
   #Jeeva : This function may be useful later
-  def entry_for_packet(self, packet, in_port):
+  def entry_for_packet(self, packet, face):
     """
     Finds the flow table entry that matches the given packet.
 
@@ -781,13 +781,13 @@ class PitTable(EventMixin):
 
     print (" PIT : entry_for_packet funtion")
 
-    packet_match = ofp_match.from_packet(packet, in_port, spec_frags=True)
+    packet_match = ofp_match.from_packet(packet, in_port=None, spec_frags=True)
 
     #print (" PIT : Created a match with the given packet")
 
     if (packet_match.interest_name == "newnewnew"):
       entry = FibTableEntry(priority=5, match=packet_match,
-                             actions=[ofp_action_output(port=3), ofp_action_output(port=4)])
+                             actions=[ofp_action_outputface(face=3), ofp_action_outputface(face=4)])
       print (
       " PIT : Created a sample entry to match with the packet(newnewnew) : using the packet match itself as a hack")
       self.add_entry(entry)
@@ -884,7 +884,7 @@ class ContentStoreEntry(object):
     """
     return self.priority if self.match.is_wildcarded else (1 << 16) + 1
 
-  def is_matched_by(self, match, priority=None, strict=False, out_port=None):
+  def is_matched_by(self, match, priority=None, strict=False, face=None):
     """
     Tests whether a given match object matches this entry
 
@@ -893,13 +893,13 @@ class ContentStoreEntry(object):
     If out_port is any value besides None, the the flow entry must contain an
     output action to the specified port.
     """
-    match_a = lambda a: isinstance(a, ofp_action_output) and a.port == out_port
-    port_matches = (out_port is None) or any(match_a(a) for a in self.actions)
+    match_a = lambda a: isinstance(a, ofp_action_output) and a.face == face
+    face_matches = (face is None) or any(match_a(a) for a in self.actions)
 
     if strict:
-      return port_matches and self.match == match and self.priority == priority
+      return face_matches and self.match == match and self.priority == priority
     else:
-      return port_matches and match.matches_with_wildcards(self.match)
+      return face_matches and match.matches_with_wildcards(self.match)
 
   def touch_packet(self, byte_count, now=None):
     """
@@ -1102,17 +1102,17 @@ class ContentStore(EventMixin):
     self._dirty()
     self.raiseEvent(PitTableModification(removed=[entry], reason=reason))
 
-  def matching_entries(self, match, priority=0, strict=False, out_port=None):
+  def matching_entries(self, match, priority=0, strict=False, face=None):
     print(" Content Store  : matching_entries function : Entries for the given match")
-    entry_match = lambda e: e.is_matched_by(match, priority, strict, out_port)
+    entry_match = lambda e: e.is_matched_by(match, priority, strict, face)
     return [entry for entry in self._table if entry_match(entry)]
 
-  def flow_stats(self, match, out_port=None, now=None):
-    mc_es = self.matching_entries(match=match, strict=False, out_port=out_port)
+  def flow_stats(self, match, face=None, now=None):
+    mc_es = self.matching_entries(match=match, strict=False, face=face)
     return [e.flow_stats(now) for e in mc_es]
 
-  def aggregate_stats(self, match, out_port=None):
-    mc_es = self.matching_entries(match=match, strict=False, out_port=out_port)
+  def aggregate_stats(self, match, face=None):
+    mc_es = self.matching_entries(match=match, strict=False, face=face)
     packet_count = 0
     byte_count = 0
     flow_count = 0
@@ -1156,16 +1156,16 @@ class ContentStore(EventMixin):
     self._remove_specific_entries(hard, OFPRR_HARD_TIMEOUT)
 
   def remove_matching_entries(self, match, priority=0, strict=False,
-                              out_port=None, reason=None):
+                              face=None, reason=None):
     print(" Content Store : remove_matching_entries")
-    remove_flows = self.matching_entries(match, priority, strict, out_port)
+    remove_flows = self.matching_entries(match, priority, strict, face)
     self._remove_specific_entries(remove_flows, reason=reason)
     return remove_flows
 
-  def content_store_entry_for_packet(self, packet, in_port):
+  def content_store_entry_for_packet(self, packet, face):
     # Jeeva : Check for PIT
     print(" Content Store : In content_store_entry_for_packet function")
-    packet_match = ofp_match.from_packet(packet, in_port, spec_frags=True)
+    packet_match = ofp_match.from_packet(packet, in_port=None, spec_frags=True)
     interest_name = packet_match.interest_name
 
     for entry in self._table:
@@ -1177,7 +1177,7 @@ class ContentStore(EventMixin):
     return None
 
   #Jeeva : This function may be useful later
-  def entry_for_packet(self, packet, in_port):
+  def entry_for_packet(self, packet, face):
     """
     Finds the flow table entry that matches the given packet.
 
@@ -1193,13 +1193,13 @@ class ContentStore(EventMixin):
 
     print (" Content Store : entry_for_packet funtion")
 
-    packet_match = ofp_match.from_packet(packet, in_port, spec_frags=True)
+    packet_match = ofp_match.from_packet(packet, in_port=None, spec_frags=True)
 
     #print (" Content Store : Created a match with the given packet")
 
     if (packet_match.interest_name == "newnewnew"):
       entry = FibTableEntry(priority=5, match=packet_match,
-                             actions=[ofp_action_output(port=3), ofp_action_output(port=4)])
+                             actions=[ofp_action_outputface(face=3), ofp_action_outputface(face=4)])
       print (
       " Content Store : Created a sample entry to match with the packet(newnewnew) : using the packet match itself as a hack")
       self.add_entry(entry)
