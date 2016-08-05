@@ -427,16 +427,24 @@ class ICNSwitchBase (object):
           print 'Destination MAC : ' + eth_addr(packet[0:6]) + ' Source MAC : ' + eth_addr(
             packet[6:12]) + ' Protocol : ' + str(eth_protocol)
           print ('Data : ', data)
-          print(" Interest/data received from host : ", data)
+          interest=data.split(",")[0]
+          seen_part = data.split(",")[1]
+          print seen_part
+          print seen_part.index("Seen=")
+          print len(seen_part)
+          seen = seen_part[-(seen_part.index("Seen=")):]
+          print seen
+          print(" Interest/data received from host : ", interest)
 
           #face = (original_packet[1][0].split("\'"))[0]
 
-          face = original_packet[1][0]
-          print face
-          print self.faces[face]
+          if(seen==0):
+            face = original_packet[1][0]
+            print face
+            print self.faces[face]
 
-          packet = ethernet(raw=data)
-          self.rx_packet_from_face(packet, self.faces[face])
+            packet = ethernet(raw=data)
+            self.rx_packet_from_face(packet, self.faces[face])
 
   def add_hosts(self,hosts):
     print (" ICN SWITCH : Going to add two hosts to switch")
@@ -1381,7 +1389,7 @@ class ICNSwitchBase (object):
     src = "\xFE\xED\xFA\xCE\xBE\xEF"
     dst = "\xFE\xED\xFA\xCE\xBE\xEF"
     eth_type = "\x7A\x05"
-    payload = packet.raw
+    payload = packet.raw+"Seen:1"
     '''
     for k,v in self.faces.iteritems():
       if(face==v) :
