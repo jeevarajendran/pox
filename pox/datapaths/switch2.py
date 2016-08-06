@@ -279,12 +279,16 @@ class ICNSwitchBase (object):
     self.port_stats = {}
 
     #Jeeva faces list
-    self.faces = {'eth0':1,'lo':2}
+    self.faces = {"lo":1,"eth0":2}
+    self.faces_to_dev = {1: "S1", 2: "H2"}
+    #self.face_to_dev = {"S1":1,"H2":2}
     self.face_thread = {}
 
     print(" ICN SWITCH BASE: Add port")
     for port in ports:
       self.add_port(port)
+
+    self.init_name_table()
 
     if features is not None:
       self.features = features
@@ -362,6 +366,12 @@ class ICNSwitchBase (object):
     print(" ICN SWITCH : SNIFF THE FACES for incoming packets ")
     self.sniff_faces()
 
+  def init_name_table(self):
+    print("*****Initializing flow table****")
+    match = ofp_match(interest_name="/test/host2")
+    self.table.add_entry(FibTableEntry(match=match,actions=[ofp_action_outputface(face=2)]))
+    print("*****Done intializinf flow table for switch 2****")
+
   #Jeeva : Functions for the switch to listen on faces for the data
   def sniff_faces(self):
     for k,v in self.faces.iteritems():
@@ -419,7 +429,7 @@ class ICNSwitchBase (object):
                   data_split = data.split(",")
                   interest_part = data_split[0]
                   seen_part = data_split[1]
-                  if seen_part == "Seen:0" :
+                  if seen_part == "To:S2" :
                     print(" ICN SWITCH : I am seeing this INTEREST packet for the 1st time : Sending to rx_packet_from_face")
                     face = original_packet[1][0]
                     print face
@@ -435,7 +445,7 @@ class ICNSwitchBase (object):
                 interest_part = data_split[0]
                 data_part = data_split[1]
                 seen_part = data_split[2]
-                if seen_part == "Seen:0":
+                if seen_part == "To:S2":
                   print(" ICN SWITCH : I am seeing this DATA packet for the 1st time : Sending to rx_packet_from_face")
                   face = original_packet[1][0]
                   print face
@@ -1088,7 +1098,13 @@ class ICNSwitchBase (object):
               self._matched_count += 1
               fib_entry.touch_packet(len(packet))
               print(" ICN SWITCH BASE : Gonna process the packet")
-              self._process_actions_for_packet(fib_entry.actions, packet, face)
+              self._process_actions_for_packet_face(fib_entry.actions, packet, face)
+              if "Interest" in raw_packet:
+                print(" ICN SWITCH BASE : Gonna send the packet out in the face, gonna add in PIT")
+                match = of.ofp_match.from_packet(packet)
+                print(" ************ Gonn add PIT entry with the face :", face)
+                new_pit_entry = PitTableEntry(match=match, faces=[face])
+                self.pit_table.add_entry(new_pit_entry)
             else:
 
               # Jeeva : Send to controller
@@ -1391,7 +1407,7 @@ class ICNSwitchBase (object):
     src = "\xFE\xED\xFA\xCE\xBE\xEF"
     dst = "\xFE\xED\xFA\xCE\xBE\xEF"
     eth_type = "\x7A\x05"
-    payload = packet.raw+",Seen:1"
+    payload = packet.raw+",To:"+ self.faces_to_dev[face]
     '''
     for k,v in self.faces.iteritems():
       if(face==v) :
@@ -1551,6 +1567,34 @@ class ICNSwitchBase (object):
     (packet, in_port) = self._packet_buffer[buffer_id]
     self._process_actions_for_packet(actions, packet, in_port, ofp)
     self._packet_buffer[buffer_id] = None
+
+  def _process_actions_for_packet_face (self, actions, packet, face, ofp=None):
+    """
+    process the output actions for a packet
+
+    ofp is the message which triggered this processing, if any (used for error
+    generation)
+    """
+    #print(" ICN SWITCH BASE : In _process_actions_for_packet")
+    print(" ICN SWITCH BASE : In _process_actions_for_packet : actions :", actions)
+    assert assert_type("packet", packet, (ethernet, bytes), none_ok=False)
+    if not isinstance(packet, ethernet):
+      packet = ethernet.unpack(packet)
+
+    #print(" ICN SWITCH BASE : In _process_actions_for_packet : Ensured packet is an ethernet packet")
+    for action in actions:
+      #if action.type is ofp_action_resubmit:
+      #  self.rx_packet(packet, in_port)
+      #  return
+      # Jeeva : So new action handlers have to be added for new actions
+      #print(" *** ICN SWITCH BASE : In _process_actions_for_packet : Inside actions for loop ")
+      h = self.action_handlers.get(action.type)
+      #print(" ICN SWITCH BASE : In _process_actions_for_packet : action handler :", h)
+      if h is None:
+        self.log.warn("Unknown action type: %x " % (action.type,))
+        self.send_error(type=OFPET_BAD_ACTION, code=OFPBAC_BAD_TYPE, ofp=ofp)
+        return
+      packet = h(action, packet, face)
 
   def _process_actions_for_packet (self, actions, packet, in_port, ofp=None):
     """

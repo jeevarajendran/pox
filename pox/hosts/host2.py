@@ -15,7 +15,7 @@ def interest_thread(interface):
     print("Hi User .. You can send an Interest at any time. Just Enter the interest in ther terminal")
     while True:
         input_data = raw_input("")
-        payload = "Interest:" + input_data + ",Seen:0"
+        payload = "Interest:" + input_data + ",Seen:H2"
         s.send(src + dst + eth_type + payload)
 
 
@@ -67,25 +67,25 @@ def data_thread(interface):
                             data_split = data.split(",")
                             interest_part = data_split[0]
                             seen_part = data_split[1]
-                            if seen_part == "Seen:1":
+                            if seen_part == "To:H2":
                                 print("\n")
                                 print("Received Interest :", interest_part)
                                 src = "\xFE\xED\xFA\xCE\xBE\xEF"
                                 dst = "\xFE\xED\xFA\xCE\xBE\xEF"
                                 eth_type = "\x7A\x05"
-                                payload = interest_part+",Data: Hi This is Host 2  I got your request How are you?,Seen:0"
+                                payload = interest_part+",Data: Hi This is Host 2  I got your request How are you?,To:S2"
                                 s.send(src + dst + eth_type + payload)
                                 print("-------- Sent Data back to the face -------- ")
                                 print("\n")
                             else:
-                                #Host : I sent this INTEREST packet : Doing Nothing"
+                                #Host : I sent this INTEREST packet or i dont know about it: Doing Nothing"
                                 ''' Do nothing '''
                     else:
                         data_split = data.split(",")
                         interest_part = data_split[0]
                         data_part = data_split[1]
                         seen_part = data_split[2]
-                        if seen_part == "Seen:1":
+                        if seen_part == "To:H2":
                             print("\n")
                             print(data_part)
                             print("\n\n")
@@ -106,7 +106,7 @@ def data_thread(interface):
 # Create two threads as follows
 try:
     s = socket.socket(socket.AF_PACKET, socket.SOCK_RAW, socket.ntohs(0x0003))
-    s.bind(("lo", 0))
+    s.bind(("eth0", 0))
     thread.start_new_thread(interest_thread, (s,))
     thread.start_new_thread(data_thread, (s,))
 except:

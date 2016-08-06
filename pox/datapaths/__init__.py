@@ -134,7 +134,7 @@ def softwareswitch (address='127.0.0.1', port = 6633, max_retry_delay = 16,
             extra_args = extra)
 
 def icnswitch1 (address='127.0.0.1', port = 6633, max_retry_delay = 16,
-    dpid = None, extra = None, __INSTANCE__ = None):
+    dpid = "123", extra = None, __INSTANCE__ = None):
   """
   Launches a ICNSwitch
 
@@ -153,7 +153,7 @@ def icnswitch1 (address='127.0.0.1', port = 6633, max_retry_delay = 16,
             extra_args = extra)
 
 def icnswitch2 (address='127.0.0.1', port = 6633, max_retry_delay = 16,
-    dpid = None, extra = None, __INSTANCE__ = None):
+    dpid = "456", extra = None, __INSTANCE__ = None):
   """
   Launches a ICNSwitch
 

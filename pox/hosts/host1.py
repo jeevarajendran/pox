@@ -14,7 +14,7 @@ def interest_thread( interface):
   print("Hi User .. You can send an Interest at any time. Just Enter the interest in ther terminal")
   while True:
     input_data = raw_input("")
-    payload = "Interest:"+input_data+",Seen:0"
+    payload = "Interest:"+input_data+",To:S1"
     s.send(src + dst + eth_type + payload)
 
 
@@ -67,25 +67,25 @@ def data_thread( interface):
                   data_split = data.split(",")
                   interest_part = data_split[0]
                   seen_part = data_split[1]
-                  if seen_part == "Seen:1" :
+                  if seen_part == "To:H1" :
                     print("\n")
                     print("Received Interest :", interest_part)
                     src = "\xFE\xED\xFA\xCE\xBE\xEF"
                     dst = "\xFE\xED\xFA\xCE\xBE\xEF"
                     eth_type = "\x7A\x05"
-                    payload = interest_part + ",Data: Hi This is Host 1  I got your request How are you?,Seen:0"
+                    payload = interest_part + ",Data: Hi This is Host 1  I got your request How are you?,To:S1"
                     s.send(src + dst + eth_type + payload)
                     print("------ Sent Data back to the face -----")
                     print("\n")
                   else:
-                    # Host : I sent this INTEREST packet : Doing Nothing"
+                    # Host : I sent this INTEREST packet or i dont know about it: Doing Nothing"
                     ''' Do nothing '''
           else:
               data_split = data.split(",")
               interest_part = data_split[0]
               data_part = data_split[1]
               seen_part = data_split[2]
-              if seen_part == "Seen:1":
+              if seen_part == "To:H1":
                 print("\n")
                 print(data_part)
                 print("\n")

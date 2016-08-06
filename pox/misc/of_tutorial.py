@@ -46,8 +46,9 @@ class Tutorial (object):
     # Use this table to keep track of which ethernet address is on
     # which switch port (keys are MACs, values are ports).
     self.mac_to_port = {}
+    self.switch_config = {291:{"H1":1,"S2":2},1110:{"S1":1,"H2":2}} #291 is dpid for S1, 1110 dpid for S2
     self.name_table = {'/test/contentstorematch':4,'/test/pitmatch':3,'/test/fibmatch':2,
-                       '/test/nomatch':1,'/test/host2':2,'/test/host1':1} #Jeeva : change 3 back to 999 for the hostmatch test to work
+                       '/test/nomatch':1,'/test/host2':"S2",'/test/host1':"S1"} #Jeeva : change 3 back to 999 for the hostmatch test to work
 
     self.content_dict = {'/test/data1':"Sample_data_1",'/test/data2':"Sample_data_2",'/test/data3':"Sample_data_3",
                          '/test/data4': "Sample_data_4",'/test/controllerhasdata':"Data_for_controller_has_data"}
@@ -128,7 +129,7 @@ class Tutorial (object):
     # sending it (len(packet_in.data) should be == packet_in.total_len)).
 
 
-  def act_like_switch (self, packet, packet_in):
+  def act_like_switch (self, packet, packet_in,dpid):
     """
     Implement switch-like behavior.
     """
@@ -152,8 +153,15 @@ class Tutorial (object):
     else: #Check in Name Table
       print(" Interest Name :", interest_name)
       if interest_name in self.name_table:
-        face = self.name_table[interest_name]
+        dev = self.name_table[interest_name]
         #print("OF_TUTORIAL : Port to send :", port)
+
+        face = None
+        dev_list = self.switch_config[dpid]
+        if dev in dev_list :
+          face = dev_list[dev]
+
+        print ("Face for the switch to send out the information :", face)
 
         #Jeeva : push a flow mod message
 
@@ -212,7 +220,7 @@ class Tutorial (object):
     # when starting the exercise.
     log.debug(" OF_TUTORIAL : Calling act like Switch function")
     #self.act_like_hub(packet, packet_in)
-    self.act_like_switch(packet, packet_in)
+    self.act_like_switch(packet, packet_in,event.dpid)
 
 def launch ():
   """
