@@ -21,6 +21,7 @@ Example:
 
 from pox.lib.ioworker.workers import BackoffWorker
 from pox.datapaths.switch import SoftwareSwitch, OFConnection, ICNSwitch
+from pox.datapaths.switch2 import ICNSwitch2
 from pox.datapaths.switch import ExpireMixin
 from pox.datapaths.nx_switch import NXSoftwareSwitch
 from pox.lib.util import dpid_to_str, str_to_dpid
@@ -132,7 +133,7 @@ def softwareswitch (address='127.0.0.1', port = 6633, max_retry_delay = 16,
   do_launch(ExpiringSwitch, address, port, max_retry_delay, dpid,
             extra_args = extra)
 
-def icnswitch (address='127.0.0.1', port = 6633, max_retry_delay = 16,
+def icnswitch1 (address='127.0.0.1', port = 6633, max_retry_delay = 16,
     dpid = None, extra = None, __INSTANCE__ = None):
   """
   Launches a ICNSwitch
@@ -145,6 +146,25 @@ def icnswitch (address='127.0.0.1', port = 6633, max_retry_delay = 16,
   core.register("datapaths", {})
 
   class ExpiringSwitch(ExpireMixin, ICNSwitch):
+    pass
+
+  print(" DATAPATH : Gonna call Do Launch")
+  do_launch(ExpiringSwitch, address, port, max_retry_delay, dpid,
+            extra_args = extra)
+
+def icnswitch2 (address='127.0.0.1', port = 6633, max_retry_delay = 16,
+    dpid = None, extra = None, __INSTANCE__ = None):
+  """
+  Launches a ICNSwitch
+
+  Not particularly useful, since ICNSwitch doesn't do much.
+  """
+  print(" DATAPATH : ICN Switch Function")
+  from pox.core import core
+  print(" DATAPATH : Registering in core")
+  core.register("datapaths", {})
+
+  class ExpiringSwitch(ExpireMixin, ICNSwitch2):
     pass
 
   print(" DATAPATH : Gonna call Do Launch")

@@ -654,13 +654,13 @@ class PitTable(EventMixin):
         continue
       low = middle + 1
     '''
-    #print(" PIT : Table before adding the new pit entry :", table)
+    print(" PIT : Table before adding the new pit entry :", entry.match.interest_name)
     #print("\n\n")
     table.insert(low, entry)
 
     self._dirty()
 
-    #print(" PIT : Table after adding the new pit entry :", table)
+    print(" PIT : Table after adding the new pit entry :", table)
     #print(" ----------------------\n\n")
     print(" PIT : add_pit_entry : Gonna raiseEvent for PitTableModification, commented for now : So no event")
     #self.raiseEvent(FibTableModification(added=[entry]))
@@ -669,7 +669,8 @@ class PitTable(EventMixin):
     assert isinstance(entry, PitTableEntry)
     self._table.remove(entry)
     self._dirty()
-    self.raiseEvent(PitTableModification(removed=[entry], reason=reason))
+    print(" PIT : remove_entry : Gonna raiseEvent for PitTableModification, commented for now : So no event")
+    #self.raiseEvent(PitTableModification(removed=[entry], reason=reason))
 
   def matching_entries(self, match, priority=0, strict=False, face=None):
     print(" PIT : matching_entries function : Entries for the given match")
@@ -755,12 +756,30 @@ class PitTable(EventMixin):
     print(" PIT : In fetch_faces_from_pit_entry function")
     packet_match = ofp_match(interest_name=interest_name)
     interest_name = packet_match.interest_name
-
+    print(" PIT : Gonna search for the interest :", interest_name)
     for entry in self._table:
       #print(" PIT : checking each entry in the PIT table :", entry, "\n")
       if entry.match.interest_name == interest_name:
         #print (" PIT : Entry Found: Returning the ports")
         return entry.faces
+
+    return None
+
+  def delete_pit_entry(self,interest_name):
+    #Jeeva : check PIT and retirn the ports
+    print(" PIT : In fetch_faces_from_pit_entry function")
+    packet_match = ofp_match(interest_name=interest_name)
+    interest_name = packet_match.interest_name
+    print(" PIT : Gonna search for the interest :", interest_name)
+    for entry in self._table:
+      #print(" PIT : checking each entry in the PIT table :", entry, "\n")
+      if entry.match.interest_name == interest_name:
+        #print (" PIT : Entry Found: Returning the ports")
+        assert isinstance(entry, PitTableEntry)
+        self._table.remove(entry)
+        self._dirty()
+        print(" PIT : remove_entry : Gonna raiseEvent for PitTableModification, commented for now : So no event")
+        # self.raiseEvent(PitTableModification(removed=[entry], reason=reason))
 
     return None
 

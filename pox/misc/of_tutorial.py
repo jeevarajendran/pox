@@ -47,7 +47,7 @@ class Tutorial (object):
     # which switch port (keys are MACs, values are ports).
     self.mac_to_port = {}
     self.name_table = {'/test/contentstorematch':4,'/test/pitmatch':3,'/test/fibmatch':2,
-                       '/test/nomatch':1,'/test/hostmatch':2} #Jeeva : change 3 back to 999 for the hostmatch test to work
+                       '/test/nomatch':1,'/test/host2':2,'/test/host1':1} #Jeeva : change 3 back to 999 for the hostmatch test to work
 
     self.content_dict = {'/test/data1':"Sample_data_1",'/test/data2':"Sample_data_2",'/test/data3':"Sample_data_3",
                          '/test/data4': "Sample_data_4",'/test/controllerhasdata':"Data_for_controller_has_data"}

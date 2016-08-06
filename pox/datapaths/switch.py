@@ -241,11 +241,9 @@ class ICNSwitchBase (object):
      - max_entries is max flows entries per table
     """
     print(" ICN SWITCH BASE: Init Function")
-    #print("******** Switch features : ", features)
 
     if name is None: name = dpid_to_str(dpid)
     self.name = name
-
     self.dpid = dpid
 
     if isinstance(ports, int):
@@ -281,7 +279,6 @@ class ICNSwitchBase (object):
     self.port_stats = {}
 
     #Jeeva faces list
-
     self.faces = {'eth0':1,'lo':2}
     self.face_thread = {}
 
@@ -293,18 +290,12 @@ class ICNSwitchBase (object):
       self.features = features
     else:
       # Set up default features
-
       #Jeeva: Switch features have to be changed
       print(" ICN SWITCH BASE: Gonna call SwitchFeatures Function")
       self.features = SwitchFeatures()
       self.features.cap_flow_stats = True
       self.features.cap_table_stats = True
       self.features.cap_port_stats = True
-      #self.features.cap_stp = True
-      #self.features.cap_ip_reasm = True
-      #self.features.cap_queue_stats = True
-      #self.features.cap_arp_match_ip = True
-
       self.features.act_output = True
       self.features.act_enqueue = True
       self.features.act_strip_vlan = True
@@ -337,15 +328,12 @@ class ICNSwitchBase (object):
     #TODO: Refactor this with above
     self.action_handlers = {}
     for value,name in ofp_action_type_map.iteritems():
-      #print(" Setting Action Handlers for the action :", name)
       name = name.split("OFPAT_",1)[-1].lower()
-      #print("name = ", name)
       h = getattr(self, "_action_" + name, None)
       if not h: continue
       #if getattr(self.features, "act_" + name) is False: continue #Jeeva : Add this back. Seems like it is
       #checking whether the action is listed as switch features
       self.action_handlers[value] = h
-      #print(" *** Handler that is set :", h )
 
     # Set up handlers for stats handlers
     # That is, self.stats_handlers[OFPST_FOO] = self._stats_foo
@@ -371,7 +359,7 @@ class ICNSwitchBase (object):
     self.hosts = {}
     #self.add_hosts(self.hosts)
 
-    print(" *** Gonna call sniff faces function *** ")
+    print(" ICN SWITCH : SNIFF THE FACES for incoming packets ")
     self.sniff_faces()
 
   #Jeeva : Functions for the switch to listen on faces for the data
@@ -380,7 +368,7 @@ class ICNSwitchBase (object):
       start_new_thread(self.sniff_thread, (k,v))
 
   def sniff_thread(self,interface,face):
-    print(" *** Started Sniff thread for the interface :", interface)
+    print(" ICN SWITCH : Sniffing :", interface)
     def eth_addr(a):
       b = "%.2x:%.2x:%.2x:%.2x:%.2x:%.2x" % (ord(a[0]), ord(a[1]), ord(a[2]), ord(a[3]), ord(a[4]), ord(a[5]))
       return b
@@ -396,10 +384,9 @@ class ICNSwitchBase (object):
     # receive a packet
     s.bind((interface, 0))
     self.face_thread[face] = s
+
     while True:
-
       packet = s.recvfrom(65565)
-
       original_packet = packet
 
       # packet string from tuple
@@ -412,8 +399,6 @@ class ICNSwitchBase (object):
       data = packet[eth_length:]
       eth = unpack('!6s6sH', eth_header)
       eth_protocol = socket.ntohs(eth[2])
-      #print 'Destination MAC : ' + eth_addr(packet[0:6]) + ' Source MAC : ' + eth_addr(
-      #  packet[6:12]) + ' Protocol : ' + str(eth_protocol)
 
       # Parse IP packets, IP Protocol number = 8
       if eth_protocol == 8:
@@ -423,28 +408,44 @@ class ICNSwitchBase (object):
         '''
       else:
         if eth_protocol == 1402:
-          print ('****** Protocol other than TCP/UDP/ICMP ***** : ', eth_protocol)
-          print 'Destination MAC : ' + eth_addr(packet[0:6]) + ' Source MAC : ' + eth_addr(
-            packet[6:12]) + ' Protocol : ' + str(eth_protocol)
-          print ('Data : ', data)
-          interest=data.split(",")[0]
-          seen_part = data.split(",")[1]
-          print seen_part
-          print seen_part.index("Seen=")
-          print len(seen_part)
-          seen = seen_part[-(seen_part.index("Seen=")):]
-          print seen
-          print(" Interest/data received from host : ", interest)
+          if original_packet[1][0] in self.faces:
+            if original_packet[1][1] == 3:
+              print (' ICN SWITCH : ICN protocol packet : ', eth_protocol)
+              print 'Destination MAC : ' + eth_addr(packet[0:6]) + ' Source MAC : ' + eth_addr(
+                packet[6:12]) + ' Protocol : ' + str(eth_protocol)
+              print ('Data : ', data)
+              if "Data:" not in data:
+                if "Interest:" in data:
+                  data_split = data.split(",")
+                  interest_part = data_split[0]
+                  seen_part = data_split[1]
+                  if seen_part == "Seen:0" :
+                    print(" ICN SWITCH : I am seeing this INTEREST packet for the 1st time : Sending to rx_packet_from_face")
+                    face = original_packet[1][0]
+                    print face
+                    print self.faces[face]
+                    packet = ethernet(raw=interest_part)
+                    self.rx_packet_from_face(packet, self.faces[face])
+                  else:
+                    print(" ICN SWITCH : I have already seen this INTEREST packet : Doing Nothing")
+                else:
+                  print(" ICN SWITCH : Neither Interest Nor Data packet")
+              else :
+                data_split = data.split(",")
+                interest_part = data_split[0]
+                data_part = data_split[1]
+                seen_part = data_split[2]
+                if seen_part == "Seen:0":
+                  print(" ICN SWITCH : I am seeing this DATA packet for the 1st time : Sending to rx_packet_from_face")
+                  face = original_packet[1][0]
+                  print face
+                  print self.faces[face]
+                  raw_data = interest_part+","+data_part
+                  packet = ethernet(raw=raw_data)
+                  self.rx_packet_from_face(packet, self.faces[face])
+                else:
+                  print(" ICN SWITCH : I have already seen this DATA packet : Doing Nothing")
 
-          #face = (original_packet[1][0].split("\'"))[0]
-
-          if(seen==0):
-            face = original_packet[1][0]
-            print face
-            print self.faces[face]
-
-            packet = ethernet(raw=data)
-            self.rx_packet_from_face(packet, self.faces[face])
 
   def add_hosts(self,hosts):
     print (" ICN SWITCH : Going to add two hosts to switch")
@@ -1103,6 +1104,7 @@ class ICNSwitchBase (object):
               if "Interest" in raw_packet :
                 print(" ICN SWITCH BASE : Sent the interest packet to controller, gonna add in PIT")
                 match = of.ofp_match.from_packet(packet)
+                print(" ************ Gonn add PIT entry with the face :", face)
                 new_pit_entry = PitTableEntry(match=match,faces=[face])
                 self.pit_table.add_entry(new_pit_entry)
 
@@ -1115,12 +1117,12 @@ class ICNSwitchBase (object):
       data = raw_packet[-raw_packet.index("Data:"):]
       #print(" Interest :", interest)
       #print(" Data :", data)
-      ports = self.pit_table.fetch_faces_from_pit_entry(interest)
-      if (ports != True):
-        print ("IN SWITCH : faces are returned :", ports)
-        for port in ports:
-          self._output_packet(packet, port, in_port)
-
+      faces = self.pit_table.fetch_faces_from_pit_entry(interest)
+      if (faces != True):
+        print ("IN SWITCH : faces are returned :", faces)
+        for face in faces:
+          self._output_packet_face(packet, face)
+      self.pit_table.delete_pit_entry(interest)
       #Add to content store
       is_cs_full = self.content_store._entries_counter
       #print(" **************** : Content Store Status :", is_cs_full)
@@ -1248,7 +1250,7 @@ class ICNSwitchBase (object):
       data = raw_packet[-raw_packet.index("Data:"):]
       #print(" Interest :", interest)
       #print(" Data :", data)
-      ports = self.pit_table.fetch_faces_from_pit_entry(interest)
+      faces = self.pit_table.fetch_faces_from_pit_entry(interest)
       if (ports != True):
         print ("IN SWITCH : faces are returned :", ports)
         for port in ports:
@@ -1389,7 +1391,7 @@ class ICNSwitchBase (object):
     src = "\xFE\xED\xFA\xCE\xBE\xEF"
     dst = "\xFE\xED\xFA\xCE\xBE\xEF"
     eth_type = "\x7A\x05"
-    payload = packet.raw+"Seen:1"
+    payload = packet.raw+",Seen:1"
     '''
     for k,v in self.faces.iteritems():
       if(face==v) :
@@ -1399,7 +1401,10 @@ class ICNSwitchBase (object):
     s.send(src + dst + eth_type + payload)
     '''
     self.face_thread[face].send(src + dst + eth_type + payload)
-    print("***** Sent Data to Next Hob ***** ")
+    if "Data:" not in payload:
+      print("***** Sent INTEREST packet to next hob face : ", face)
+    else:
+      print("***** Sent DATA packet back in the requested face : ", face)
 
   def _output_packet (self, packet, out_port, in_port, max_len=None):
     """
