@@ -30,6 +30,10 @@ log = core.getLogger()
 
 
 class Tutorial (object):
+
+  name_table =  {'/test/contentstorematch':'4','/test/pitmatch':'3','/test/fibmatch':'2',
+                       '/test/nomatch':'1'}
+
   """
   A Tutorial object is created for each switch that connects.
   A Connection object for that switch is passed to the __init__ function.
@@ -46,9 +50,12 @@ class Tutorial (object):
     # Use this table to keep track of which ethernet address is on
     # which switch port (keys are MACs, values are ports).
     self.mac_to_port = {}
+    self.connected_switches = {291:"S1",1110:"S2"}
     self.switch_config = {291:{"H1":1,"S2":2},1110:{"S1":1,"H2":2}} #291 is dpid for S1, 1110 dpid for S2
-    self.name_table = {'/test/contentstorematch':4,'/test/pitmatch':3,'/test/fibmatch':2,
-                       '/test/nomatch':1,'/test/host2':"S2",'/test/host1':"S1"} #Jeeva : change 3 back to 999 for the hostmatch test to work
+    '''
+    self.name_table = {'/test/contentstorematch':'4','/test/pitmatch':'3','/test/fibmatch':'2',
+                       '/test/nomatch':'1'} #Jeeva : change 3 back to 999 for the hostmatch test to work
+    '''
 
     self.content_dict = {'/test/data1':"Sample_data_1",'/test/data2':"Sample_data_2",'/test/data3':"Sample_data_3",
                          '/test/data4': "Sample_data_4",'/test/controllerhasdata':"Data_for_controller_has_data"}
@@ -168,10 +175,13 @@ class Tutorial (object):
 
         print(" OF_TUTORIAL : Sending Flow Mod message")
         msg = of.ofp_flow_mod()
+        print msg
         msg.match = of.ofp_match.from_packet(packet)
-        msg.idle_timeout = 77
-        msg.hard_timeout = 77
+        print msg
+        msg.idle_timeout = 0
+        msg.hard_timeout = 0
         msg.actions.append(of.ofp_action_outputface(face=face))
+        print msg
         #msg.data = event.ofp
         self.connection.send(msg)
         #print("OF_TUTORIAL : Sent Flow Mod message")
@@ -185,8 +195,20 @@ class Tutorial (object):
     #if interest_name == "/test/hostfetch":
 
 
-
-
+  def _handle_ContentAnnouncement(self, event):
+    """
+        Handles content announcement messages from the switch.
+        """
+    print(" ********* Handling Content Announcement messages  *******************")
+    packet = event.parsed.raw
+    content_interest_name = (packet.split("Content:"))[1]
+    print content_interest_name
+    self.name_table[content_interest_name] = self.connected_switches[event.dpid]
+    print(" ********* Added Content Announcement *******************")
+    print self.name_table
+    #msg = of.ofp_clear_cs()
+    #self.connection.send(msg)
+    #print(" ********* Sent Content Store Clear message ***************")
 
   def _handle_CsFull (self, event):
     """

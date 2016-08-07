@@ -42,6 +42,33 @@ import namelibopenflow_01 as of
 from pox.lib.packet.ethernet import ethernet
 #print("OF INIT : ethernet import")
 
+
+class ContentAnnouncement(Event):
+  """
+  Event raised when the Content Announcement from a switch
+  """
+  print(" --- Raised Content Announcement Event - - ")
+  def __init__ (self, connection, ofp):
+    Event.__init__(self)
+    self.connection = connection
+    self.ofp = ofp
+    #self.port = ofp.in_port
+    self.data = ofp.interest_name
+    self._parsed = None
+    self.dpid = connection.dpid
+
+  def parse (self):
+    if self._parsed is None:
+      self._parsed = ethernet(self.data)
+    return self._parsed
+
+  @property
+  def parsed (self):
+    """
+    The packet as parsed by pox.lib.packet
+    """
+    return self.parse()
+
 class CsFull(Event):
   """
   Event raised when the Content Store is Full

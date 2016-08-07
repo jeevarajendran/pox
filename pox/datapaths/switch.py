@@ -157,7 +157,8 @@ class ICNSwitchBase (object):
     for port in ports:
       self.add_port(port)
 
-    #self.init_name_table()
+    self.init_name_table()
+
 
     if features is not None:
       self.features = features
@@ -237,8 +238,8 @@ class ICNSwitchBase (object):
 
   def init_name_table(self):
     print("*****Initializing flow table****")
-    match = ofp_match(interest_name="/test/host2")
-    self.table.add_entry(FibTableEntry(match=match,actions=[ofp_action_outputface(face=2)]))
+    match = ofp_match(interest_name="/test/host1")
+    self.table.add_entry(FibTableEntry(match=match,actions=[ofp_action_outputface(face=1)]))
     print("*****Done intializinf flow table for switch 2****")
 
   #Jeeva : Functions for the switch to listen on faces for the data
@@ -307,6 +308,21 @@ class ICNSwitchBase (object):
                     self.rx_packet_from_face(packet, self.faces[face])
                   else:
                     print(" ICN SWITCH : I have already seen this INTEREST packet : Doing Nothing")
+                elif "Content:" in data:
+                  print(" ICN SWITCH : This is a CONTENT packet")
+                  data_split = data.split(",")
+                  content_part = data_split[0]
+                  seen_part = data_split[1]
+                  if seen_part == "To:" + self.switch_name:
+                    print(
+                      " ICN SWITCH : I am seeing this CONTENT packet for the 1st time : Sending to rx_packet_from_face")
+                    # face = original_packet[1][0]
+                    # print face
+                    # print self.faces[face]
+                    # packet = ethernet(raw=interest_part)
+                    # self.rx_packet_from_face(packet, self.faces[face])
+                    self.send_content_announcement(content_part)
+                    print("-----------------Sent content announcement------------")
                 else:
                   print(" ICN SWITCH : Neither Interest Nor Data packet")
               else :
@@ -497,6 +513,9 @@ class ICNSwitchBase (object):
                              actions = self.features.action_bits,
                              ports = self.ports.values())
     self.send(msg)
+    print(" ICN SWITCH : Sending Content Announcement to the controller")
+    print("\n\n")
+    #self.send_content_announcement("/test/host1")
 
   def _rx_add_cs_entry (self, ofp, connection):
     """
@@ -786,6 +805,20 @@ class ICNSwitchBase (object):
     #%%%%%%%%%%%%555
     self.send(msg)
 
+  def send_content_announcement (self,interest_name):
+    """
+            Send Content_announcement
+        """
+    print(" ICN Switch BASE: send_content_announcement  ")
+
+    msg = ofp_content_announcement(interest_name=interest_name)
+
+    print(" ICN Switch BASE : send_content_announcement  msg :", msg)
+
+    # Jeeva : Commented now , remove it
+    # $$$$$$$$$$$$$4
+    # %%%%%%%%%%%%555
+    self.send(msg)
 
   def send_hello (self, force = False):
     """
@@ -1987,7 +2020,9 @@ class OFConnection (object):
       #print(" %%%%%%%%%%%% check 4")
       print(" Gonna unpack the message")
       new_offset, msg_obj = self.unpackers[ofp_type](message, 0)
+      print(" ---- Came bacl from unpacking -------------")
       #print(" %%%%%%%%%%%% check 5")
+
       if new_offset != message_length:
         #print(" %%%%%%%%%%%% check 6")
         info = (msg_obj, message_length, new_offset)
@@ -1996,6 +2031,7 @@ class OFConnection (object):
         # Assume sender was right and we should skip what it told us to.
         io_worker.consume_receive_buf(message_length)
         continue
+
 
       #print(" %%%%%%%%%%%% check 7")
       io_worker.consume_receive_buf(message_length)

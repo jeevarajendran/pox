@@ -159,6 +159,7 @@ class ICNSwitchBase (object):
 
     self.init_name_table()
 
+
     if features is not None:
       self.features = features
     else:
@@ -307,6 +308,21 @@ class ICNSwitchBase (object):
                     self.rx_packet_from_face(packet, self.faces[face])
                   else:
                     print(" ICN SWITCH : I have already seen this INTEREST packet : Doing Nothing")
+                elif "Content:" in data:
+                  print(" ICN SWITCH : This is a CONTENT packet")
+                  data_split = data.split(",")
+                  content_part = data_split[0]
+                  seen_part = data_split[1]
+                  if seen_part == "To:" + self.switch_name:
+                    print(
+                      " ICN SWITCH : I am seeing this CONTENT packet for the 1st time : Sending to rx_packet_from_face")
+                    # face = original_packet[1][0]
+                    # print face
+                    # print self.faces[face]
+                    # packet = ethernet(raw=interest_part)
+                    # self.rx_packet_from_face(packet, self.faces[face])
+                    self.send_content_announcement(content_part)
+                    print("-----------------Sent content announcement------------")
                 else:
                   print(" ICN SWITCH : Neither Interest Nor Data packet")
               else :
@@ -497,6 +513,9 @@ class ICNSwitchBase (object):
                              actions = self.features.action_bits,
                              ports = self.ports.values())
     self.send(msg)
+    print(" ICN SWITCH : Sending Content Announcement to the controller")
+    print("\n\n")
+    #self.send_content_announcement("/test/host1")
 
   def _rx_add_cs_entry (self, ofp, connection):
     """
@@ -786,6 +805,20 @@ class ICNSwitchBase (object):
     #%%%%%%%%%%%%555
     self.send(msg)
 
+  def send_content_announcement (self,interest_name):
+    """
+            Send Content_announcement
+        """
+    print(" ICN Switch BASE: send_content_announcement  ")
+
+    msg = ofp_content_announcement(interest_name=interest_name)
+
+    print(" ICN Switch BASE : send_content_announcement  msg :", msg)
+
+    # Jeeva : Commented now , remove it
+    # $$$$$$$$$$$$$4
+    # %%%%%%%%%%%%555
+    self.send(msg)
 
   def send_hello (self, force = False):
     """

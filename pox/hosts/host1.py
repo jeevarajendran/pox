@@ -109,6 +109,14 @@ try:
   s.bind(("eth0",0))
   thread.start_new_thread( interest_thread, (s, ) )
   thread.start_new_thread( data_thread, (s, ) )
+
+  src = "\xFE\xED\xFA\xCE\xBE\xEF"
+  dst = "\xFE\xED\xFA\xCE\xBE\xEF"
+  eth_type = "\x7A\x05"
+  print("Content Announcement")
+  #input_data = raw_input("")
+  payload = "Content:/test/host1,To:S1"
+  s.send(src + dst + eth_type + payload)
 except:
   print "Error: unable to start thread"
 

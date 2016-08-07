@@ -64,6 +64,15 @@ from errno import EAGAIN, ECONNRESET, EADDRINUSE, EADDRNOTAVAIL
 
 import traceback
 
+#Jeeva : handler for content announcement
+
+def handle_CONTENT_ANNOUNCEMENT (con,msg): #A
+  print("***** Handling Content Announcement ***** ")
+  e = con.ofnexus.raiseEventNoErrors(ContentAnnouncement, con, msg)
+  if e is None or e.halt != True:
+    con.raiseEventNoErrors(ContentAnnouncement, con, msg)
+
+
 #Jeeva : handler for CS_FULL
 
 def handle_CS_FULL (con,msg): #A
@@ -276,6 +285,7 @@ handlerMap = {
   of.OFPT_VENDOR : handle_VENDOR,
   #Jeeva
   of.OFPT_CS_FULL : handle_CS_FULL,
+  of.OFPT_CONTENT_ANNOUNCEMENT : handle_CONTENT_ANNOUNCEMENT,
 }
 
 statsHandlerMap = {
@@ -603,6 +613,7 @@ class Connection (EventMixin):
     QueueStatsReceived,
     FlowRemoved,
     CsFull,
+    ContentAnnouncement,
   ])
 
   # Globally unique identifier for the Connection instance
