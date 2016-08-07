@@ -95,139 +95,6 @@ class DpPacketOut (Event):
     self.port = port
     self.switch = node # For backwards compatability
 
-#Jeeva : Connection to other switches
-
-class Connect_another_switch (Task):
-  """
-  The main recoco thread for listening to openflow messages
-  """
-  def __init__ (self, port = 7777, address = '0.0.0.0'):
-    Task.__init__(self)
-    self.port = int(port)
-    self.address = address
-    self.started = False
-
-    core.addListener(pox.core.GoingUpEvent, self._handle_GoingUpEvent)
-
-  def _handle_GoingUpEvent (self, event):
-    self.start()
-
-  def start (self):
-    if self.started:
-      return
-    self.started = True
-    return super(Connect_another_switch,self).start()
-
-  def run (self):
-    # List of open sockets/connections to select on
-    sockets = []
-
-
-    #print(" ***** Trying for another switch connection *****")
-
-
-    print(" ICN Switch : Connecting in a socket")
-    listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    try:
-      print(dir(self))
-      listener.bind((self.address, self.port))
-    except socket.error as (errno, strerror):
-      log.error("Error %i while binding socket: %s", errno, strerror)
-      if errno == EADDRNOTAVAIL:
-        log.error(" You may be specifying a local address which is "
-                  "not assigned to any interface.")
-      elif errno == EADDRINUSE:
-        log.error(" You may have another controller running.")
-        log.error(" Use openflow.of_01 --port=<port> to run POX on "
-                  "another port.")
-      return
-
-    listener.listen(16)
-    sockets.append(listener)
-
-    log.debug(" OF : Switch Listening on %s:%s" %
-              (self.address, self.port))
-    print("-----------------------------")
-    print("*****************************")
-    print("\n\n\n")
-
-    #try:
-      #new_sock = listener.accept()[0]
-      #print(" ***** Another switch connected *****", new_sock)
-    #except:
-      #print(" ***** Error while connecting to the socket ***** ")
-
-
-    con = None
-    while core.running:
-      try:
-        while True:
-          con = None
-          rlist, wlist, elist = yield Select(sockets, [], sockets, 5)
-          if len(rlist) == 0 and len(wlist) == 0 and len(elist) == 0:
-            if not core.running: break
-
-          for con in elist:
-            if con is listener:
-              raise RuntimeError("Error on listener socket")
-            else:
-              try:
-                con.close()
-              except:
-                pass
-              try:
-                sockets.remove(con)
-              except:
-                pass
-
-          timestamp = time.time()
-          for con in rlist:
-            if con is listener:
-              new_sock = listener.accept()[0]
-              print(" ***** Connected to another switch ***** ", new_sock)
-              if pox.openflow.debug.pcap_traces:
-                print(" INside")
-                #new_sock = wrap_socket(new_sock)
-              new_sock.setblocking(0)
-              # Note that instantiating a Connection object fires a
-              # ConnectionUp event (after negotation has completed)
-              #newcon = Connection(new_sock)
-              #sockets.append( newcon )
-              #print str(newcon) + " connected"
-            else:
-              con.idle_time = timestamp
-              if con.read() is False:
-                con.close()
-                sockets.remove(con)
-      except exceptions.KeyboardInterrupt:
-        break
-      except:
-        doTraceback = True
-        if sys.exc_info()[0] is socket.error:
-          if sys.exc_info()[1][0] == ECONNRESET:
-            con.info("Connection reset")
-            doTraceback = False
-
-        if doTraceback:
-          log.exception("Exception reading connection " + str(con))
-
-        if con is listener:
-          log.error("Exception on OpenFlow listener.  Aborting.")
-          break
-        try:
-          con.close()
-        except:
-          pass
-        try:
-          sockets.remove(con)
-        except:
-          pass
-
-
-    log.debug("No longer listening for connections")
-
-    #pox.core.quit()
 
 
 class ICNSwitchBase (object):
@@ -283,6 +150,8 @@ class ICNSwitchBase (object):
     self.faces_to_dev = {1: "S1", 2: "H2"}
     #self.face_to_dev = {"S1":1,"H2":2}
     self.face_thread = {}
+
+    self.switch_name = "S2"
 
     print(" ICN SWITCH BASE: Add port")
     for port in ports:
@@ -429,7 +298,7 @@ class ICNSwitchBase (object):
                   data_split = data.split(",")
                   interest_part = data_split[0]
                   seen_part = data_split[1]
-                  if seen_part == "To:S2" :
+                  if seen_part == "To:"+ self.switch_name :
                     print(" ICN SWITCH : I am seeing this INTEREST packet for the 1st time : Sending to rx_packet_from_face")
                     face = original_packet[1][0]
                     print face
@@ -445,7 +314,7 @@ class ICNSwitchBase (object):
                 interest_part = data_split[0]
                 data_part = data_split[1]
                 seen_part = data_split[2]
-                if seen_part == "To:S2":
+                if seen_part == "To:" + self.switch_name:
                   print(" ICN SWITCH : I am seeing this DATA packet for the 1st time : Sending to rx_packet_from_face")
                   face = original_packet[1][0]
                   print face

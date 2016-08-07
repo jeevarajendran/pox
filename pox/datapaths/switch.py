@@ -95,139 +95,6 @@ class DpPacketOut (Event):
     self.port = port
     self.switch = node # For backwards compatability
 
-#Jeeva : Connection to other switches
-
-class Connect_another_switch (Task):
-  """
-  The main recoco thread for listening to openflow messages
-  """
-  def __init__ (self, port = 7777, address = '0.0.0.0'):
-    Task.__init__(self)
-    self.port = int(port)
-    self.address = address
-    self.started = False
-
-    core.addListener(pox.core.GoingUpEvent, self._handle_GoingUpEvent)
-
-  def _handle_GoingUpEvent (self, event):
-    self.start()
-
-  def start (self):
-    if self.started:
-      return
-    self.started = True
-    return super(Connect_another_switch,self).start()
-
-  def run (self):
-    # List of open sockets/connections to select on
-    sockets = []
-
-
-    #print(" ***** Trying for another switch connection *****")
-
-
-    print(" ICN Switch : Connecting in a socket")
-    listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    try:
-      print(dir(self))
-      listener.bind((self.address, self.port))
-    except socket.error as (errno, strerror):
-      log.error("Error %i while binding socket: %s", errno, strerror)
-      if errno == EADDRNOTAVAIL:
-        log.error(" You may be specifying a local address which is "
-                  "not assigned to any interface.")
-      elif errno == EADDRINUSE:
-        log.error(" You may have another controller running.")
-        log.error(" Use openflow.of_01 --port=<port> to run POX on "
-                  "another port.")
-      return
-
-    listener.listen(16)
-    sockets.append(listener)
-
-    log.debug(" OF : Switch Listening on %s:%s" %
-              (self.address, self.port))
-    print("-----------------------------")
-    print("*****************************")
-    print("\n\n\n")
-
-    #try:
-      #new_sock = listener.accept()[0]
-      #print(" ***** Another switch connected *****", new_sock)
-    #except:
-      #print(" ***** Error while connecting to the socket ***** ")
-
-
-    con = None
-    while core.running:
-      try:
-        while True:
-          con = None
-          rlist, wlist, elist = yield Select(sockets, [], sockets, 5)
-          if len(rlist) == 0 and len(wlist) == 0 and len(elist) == 0:
-            if not core.running: break
-
-          for con in elist:
-            if con is listener:
-              raise RuntimeError("Error on listener socket")
-            else:
-              try:
-                con.close()
-              except:
-                pass
-              try:
-                sockets.remove(con)
-              except:
-                pass
-
-          timestamp = time.time()
-          for con in rlist:
-            if con is listener:
-              new_sock = listener.accept()[0]
-              print(" ***** Connected to another switch ***** ", new_sock)
-              if pox.openflow.debug.pcap_traces:
-                print(" INside")
-                #new_sock = wrap_socket(new_sock)
-              new_sock.setblocking(0)
-              # Note that instantiating a Connection object fires a
-              # ConnectionUp event (after negotation has completed)
-              #newcon = Connection(new_sock)
-              #sockets.append( newcon )
-              #print str(newcon) + " connected"
-            else:
-              con.idle_time = timestamp
-              if con.read() is False:
-                con.close()
-                sockets.remove(con)
-      except exceptions.KeyboardInterrupt:
-        break
-      except:
-        doTraceback = True
-        if sys.exc_info()[0] is socket.error:
-          if sys.exc_info()[1][0] == ECONNRESET:
-            con.info("Connection reset")
-            doTraceback = False
-
-        if doTraceback:
-          log.exception("Exception reading connection " + str(con))
-
-        if con is listener:
-          log.error("Exception on OpenFlow listener.  Aborting.")
-          break
-        try:
-          con.close()
-        except:
-          pass
-        try:
-          sockets.remove(con)
-        except:
-          pass
-
-
-    log.debug("No longer listening for connections")
-
-    #pox.core.quit()
 
 
 class ICNSwitchBase (object):
@@ -280,14 +147,17 @@ class ICNSwitchBase (object):
 
     #Jeeva faces list
     self.faces = {"eth0":1,"lo":2}
-    self.faces_to_dev = {1:"H1",2:"S2"}
-    #self.face_to_dev = {"H1":1,"S2":2}
-    self.virtualfaces = {}
+    self.faces_to_dev = {1: "H1", 2: "S2"}
+    #self.face_to_dev = {"S1":1,"H2":2}
     self.face_thread = {}
+
+    self.switch_name = "S1"
 
     print(" ICN SWITCH BASE: Add port")
     for port in ports:
       self.add_port(port)
+
+    #self.init_name_table()
 
     if features is not None:
       self.features = features
@@ -365,6 +235,12 @@ class ICNSwitchBase (object):
     print(" ICN SWITCH : SNIFF THE FACES for incoming packets ")
     self.sniff_faces()
 
+  def init_name_table(self):
+    print("*****Initializing flow table****")
+    match = ofp_match(interest_name="/test/host2")
+    self.table.add_entry(FibTableEntry(match=match,actions=[ofp_action_outputface(face=2)]))
+    print("*****Done intializinf flow table for switch 2****")
+
   #Jeeva : Functions for the switch to listen on faces for the data
   def sniff_faces(self):
     for k,v in self.faces.iteritems():
@@ -386,7 +262,6 @@ class ICNSwitchBase (object):
 
     # receive a packet
     s.bind((interface, 0))
-    print(" Bound to interface :", interface)
     self.face_thread[face] = s
 
     while True:
@@ -412,8 +287,6 @@ class ICNSwitchBase (object):
         '''
       else:
         if eth_protocol == 1402:
-          print dir(s)
-          print original_packet
           if original_packet[1][0] in self.faces:
             if original_packet[1][1] == 3:
               print (' ICN SWITCH : ICN protocol packet : ', eth_protocol)
@@ -425,7 +298,7 @@ class ICNSwitchBase (object):
                   data_split = data.split(",")
                   interest_part = data_split[0]
                   seen_part = data_split[1]
-                  if seen_part == "To:S1" :
+                  if seen_part == "To:"+ self.switch_name :
                     print(" ICN SWITCH : I am seeing this INTEREST packet for the 1st time : Sending to rx_packet_from_face")
                     face = original_packet[1][0]
                     print face
@@ -441,7 +314,7 @@ class ICNSwitchBase (object):
                 interest_part = data_split[0]
                 data_part = data_split[1]
                 seen_part = data_split[2]
-                if seen_part == "To:S1":
+                if seen_part == "To:" + self.switch_name:
                   print(" ICN SWITCH : I am seeing this DATA packet for the 1st time : Sending to rx_packet_from_face")
                   face = original_packet[1][0]
                   print face
@@ -945,7 +818,7 @@ class ICNSwitchBase (object):
       if buffer_id is not None:
         packet = packet[:data_length]
 
-    msg = ofp_packet_in(xid = 0, in_port = 555, buffer_id = buffer_id,
+    msg = ofp_packet_in(xid = 0, in_port = in_port, buffer_id = buffer_id,
                         reason = reason, data = packet)
 
     self.send(msg)
@@ -1094,7 +967,13 @@ class ICNSwitchBase (object):
               self._matched_count += 1
               fib_entry.touch_packet(len(packet))
               print(" ICN SWITCH BASE : Gonna process the packet")
-              self._process_actions_for_packet(fib_entry.actions, packet, face)
+              self._process_actions_for_packet_face(fib_entry.actions, packet, face)
+              if "Interest" in raw_packet:
+                print(" ICN SWITCH BASE : Gonna send the packet out in the face, gonna add in PIT")
+                match = of.ofp_match.from_packet(packet)
+                print(" ************ Gonn add PIT entry with the face :", face)
+                new_pit_entry = PitTableEntry(match=match, faces=[face])
+                self.pit_table.add_entry(new_pit_entry)
             else:
 
               # Jeeva : Send to controller
@@ -1228,13 +1107,7 @@ class ICNSwitchBase (object):
               self._matched_count += 1
               fib_entry.touch_packet(len(packet))
               print(" ICN SWITCH BASE : Gonna process the packet")
-              self._process_actions_for_packet_face(fib_entry.actions, packet, face)
-              if "Interest" in raw_packet:
-                print(" ICN SWITCH BASE : Gonna send the packet out in the face, gonna add in PIT")
-                match = of.ofp_match.from_packet(packet)
-                print(" ************ Gonn add PIT entry with the face :", face)
-                new_pit_entry = PitTableEntry(match=match, faces=[face])
-                self.pit_table.add_entry(new_pit_entry)
+              self._process_actions_for_packet(fib_entry.actions, packet, in_port)
             else:
 
               # Jeeva : Send to controller
@@ -1563,7 +1436,6 @@ class ICNSwitchBase (object):
     (packet, in_port) = self._packet_buffer[buffer_id]
     self._process_actions_for_packet(actions, packet, in_port, ofp)
     self._packet_buffer[buffer_id] = None
-
 
   def _process_actions_for_packet_face (self, actions, packet, face, ofp=None):
     """
