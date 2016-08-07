@@ -569,6 +569,24 @@ class ICNSwitchBase (object):
     #self.content_store=
     #print("\n\n------------- Added new CS entry ---------------")
 
+
+  def _rx_fib_mod (self, ofp, connection):
+    """
+    Handles flow mods
+    """
+    print("\n\n------------- Handling  FIB mod from controller ---------------")
+    print ofp.interest_name
+    print dir(ofp.face)
+
+    match = of.ofp_match(interest_name = ofp.interest_name)
+    action = of.ofp_action_outputface(face=(ofp.face)[0])
+    new_fib_entry = FibTableEntry(match=match,actions=[action])
+    self.table.add_entry(new_fib_entry)
+
+    print("\n\n------------- Added new FIB table entry ---------------")
+    #print(" Interest_name :", ofp.interest_name.split("$")[0])
+
+
   def _rx_flow_mod (self, ofp, connection):
     """
     Handles flow mods
@@ -2020,7 +2038,9 @@ class OFConnection (object):
       #print(" %%%%%%%%%%%% check 4")
       print(" Gonna unpack the message")
       new_offset, msg_obj = self.unpackers[ofp_type](message, 0)
+      print(" ---- Came bacl from unpacking -------------")
       #print(" %%%%%%%%%%%% check 5")
+
       if new_offset != message_length:
         #print(" %%%%%%%%%%%% check 6")
         info = (msg_obj, message_length, new_offset)
@@ -2029,6 +2049,7 @@ class OFConnection (object):
         # Assume sender was right and we should skip what it told us to.
         io_worker.consume_receive_buf(message_length)
         continue
+
 
       #print(" %%%%%%%%%%%% check 7")
       io_worker.consume_receive_buf(message_length)

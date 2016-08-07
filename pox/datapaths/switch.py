@@ -569,6 +569,24 @@ class ICNSwitchBase (object):
     #self.content_store=
     #print("\n\n------------- Added new CS entry ---------------")
 
+
+  def _rx_fib_mod (self, ofp, connection):
+    """
+    Handles flow mods
+    """
+    print("\n\n------------- Handling  FIB mod from controller ---------------")
+    print ofp.interest_name
+    print dir(ofp.face)
+
+    match = of.ofp_match(interest_name = ofp.interest_name)
+    action = of.ofp_action_outputface(face=(ofp.face)[0])
+    new_fib_entry = FibTableEntry(match=match,actions=[action])
+    self.table.add_entry(new_fib_entry)
+
+    print("\n\n------------- Added new FIB table entry ---------------")
+    #print(" Interest_name :", ofp.interest_name.split("$")[0])
+
+
   def _rx_flow_mod (self, ofp, connection):
     """
     Handles flow mods

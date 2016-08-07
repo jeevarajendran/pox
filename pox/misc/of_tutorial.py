@@ -173,18 +173,21 @@ class Tutorial (object):
         #Jeeva : push a flow mod message
 
 
-        print(" OF_TUTORIAL : Sending Flow Mod message")
-        msg = of.ofp_flow_mod()
-        print msg
-        msg.match = of.ofp_match.from_packet(packet)
-        print msg
-        msg.idle_timeout = 0
-        msg.hard_timeout = 0
-        msg.actions.append(of.ofp_action_outputface(face=face))
-        print msg
+        print(" OF_TUTORIAL : Sending FIB Mod message")
+        #msg = of.ofp_flow_mod()
+        #print msg
+        #msg.match = of.ofp_match.from_packet(packet)
+        #print msg
+        #msg.idle_timeout = 0
+        #msg.hard_timeout = 0
+        #msg.actions.append(of.ofp_action_outputface(face=face))
+        #print msg
         #msg.data = event.ofp
+        msg = of.ofp_fib_mod()
+        msg.interest_name=interest_name
+        msg.face=face
         self.connection.send(msg)
-        #print("OF_TUTORIAL : Sent Flow Mod message")
+        print("OF_TUTORIAL : Sent Fib mod message")
 
         print(" OF_TUTORIAL : Gonna resend the packet in the corressponding port through switch")
         self.resend_packet_face(packet, face)  # Jeeva : Change from packet to packet_in later

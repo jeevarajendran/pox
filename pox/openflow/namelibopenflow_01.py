@@ -4121,7 +4121,7 @@ class ofp_fib_mod(ofp_header):
     # self.flags = 0
     # self.actions = []
     self.interest_name = "$Not yet assigned$"
-    self.data = None  # Not in the spec!  Special magic!  Can be packet_in.
+    self.face = None  # Not in the spec!  Special magic!  Can be packet_in.
 
     initHelper(self, kw)
 
@@ -4136,8 +4136,9 @@ class ofp_fib_mod(ofp_header):
 
     packed = b""
     packed += ofp_header.pack(self)
+    packed += struct.pack("!H", self.face)
     packed += self.interest_name
-    packed += self.data
+
     # packed += struct.pack("!H", self.port_no)
     # if isinstance(self.hw_addr, bytes):
     # packed += self.hw_addr
@@ -4160,24 +4161,19 @@ class ofp_fib_mod(ofp_header):
   def unpack(self, raw, offset=0):
     print("IN unpack method, total length :", len(raw))
     offset, length = self._unpack_header(raw, offset)
-    # print("offset = ", offset)
-    # print("length = ", length)
-    offset, self.interest_name = self._read_interest(raw, offset, "$", length - offset)
-    self.interest_name = self.interest_name + "$"
-    # print("offset = ", offset)
-    # print("interest_name = ", self.interest_name)
-    offset, self.data = _read(raw, offset, length - offset)  # (length-offset)- Subtract the previously read bytes
-    # print("offset = ", offset)
-    # print("Data = ", self.data)
-    # print(" length =", length)
-    # print(" len(self) =", len(self))
+    offset, self.face = _unpack("!H", raw, offset)
+    print("Face : ", self.face)
+    offset, self.interest_name = _read(raw, offset, length - 10)
+    print("Interest name : ", self.interest_name)
     assert length == len(self)
     return offset, length
 
   def __len__(self):
-    l = 8 + len(self.interest_name) + len(self.data)  # '+1' is for $ delimiter
-    # print("Length in __len__ :", l)
-    return l
+    # FIXME: This is probably wrong, but it's not clear from the
+    #       spec what's supposed to be going on here.
+    # if len(self.data) < 2:
+    #  return 20 + len(self.data)
+    return 10 + len(self.interest_name)
 
   def __eq__(self, other):
     if type(self) != type(other): return False
@@ -4189,8 +4185,9 @@ class ofp_fib_mod(ofp_header):
     # if self.hard_timeout != other.hard_timeout: return False
     # if self.priority != other.priority: return False
     # if self.flags != other.flags: return False
+    if self.face != other.face: return False
     if self.interest_name != interest_name.data: return False
-    if self.data != other.data: return False
+
     return True
 
   def show(self, prefix=''):
@@ -4204,8 +4201,9 @@ class ofp_fib_mod(ofp_header):
     # o#utstr += prefix + 'idle_timeout: ' + str(self.idle_timeout) + '\n'
     # outstr += prefix + 'hard_timeout: ' + str(self.hard_timeout) + '\n'
     # outstr += prefix + 'priority: ' + str(self.priority) + '\n'
+    outstr += prefix + 'Face: ' + str(self.face) + '\n'
     outstr += prefix + 'Interest_name: ' + str(self.interest_name) + '\n'
-    outstr += prefix + 'Data: ' + str(self.data) + '\n'
+
     return outstr
 
 #Jeeva
