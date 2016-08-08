@@ -1017,14 +1017,14 @@ class ICNSwitchBase (object):
               print(" ICN SWITCH BASE : FIB Entry Found")
               self._matched_count += 1
               fib_entry.touch_packet(len(packet))
+              if "Interest" in raw_packet:
+                  print(" ICN SWITCH BASE : Gonna send the packet out in the face, gonna add in PIT")
+                  match = of.ofp_match.from_packet(packet)
+                  print(" ************ Gonn add PIT entry with the face :", face)
+                  new_pit_entry = PitTableEntry(match=match, faces=[face])
+                  self.pit_table.add_entry(new_pit_entry)
               print(" ICN SWITCH BASE : Gonna process the packet")
               self._process_actions_for_packet_face(fib_entry.actions, packet, face)
-              if "Interest" in raw_packet:
-                print(" ICN SWITCH BASE : Gonna send the packet out in the face, gonna add in PIT")
-                match = of.ofp_match.from_packet(packet)
-                print(" ************ Gonn add PIT entry with the face :", face)
-                new_pit_entry = PitTableEntry(match=match, faces=[face])
-                self.pit_table.add_entry(new_pit_entry)
             else:
 
               # Jeeva : Send to controller

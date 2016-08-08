@@ -76,18 +76,26 @@ import time
 # Multicast address used for STP 802.1D
 _STP_MAC = EthAddr('01:80:c2:00:00:00')
 
+
 class DpPacketOut (Event):
   """
   Event raised when a dataplane packet is sent out a port
   """
   def __init__ (self, node, packet, port):
     print(" DpPacketOut class : (Event raised when a dataplane packet is sent out a port)")
+    #print (" Node: ", node)
+    #print(" packet: ", packet)
+    #print(" port: ", port)
+    #In oredr succeed assert the packet type has to be checked . assert_type in lib/util.py , or comment
+    #out the alert
     assert assert_type("packet", packet, ethernet, none_ok=False)
     Event.__init__(self)
     self.node = node
     self.packet = packet
     self.port = port
     self.switch = node # For backwards compatability
+
+
 
 class ICNSwitchBase (object):
   def __init__ (self, dpid, name=None, ports=4, miss_send_len=128,
@@ -132,28 +140,32 @@ class ICNSwitchBase (object):
     self._packet_buffer = []
     self._packet_buffer_face = []
 
+    #l = Connect_another_switch(port=7777, address='0.0.0.0')
     # Map port_no -> openflow.pylibopenflow_01.ofp_phy_ports
     self.ports = {}
     self.port_stats = {}
 
-    #Faces list
+    #Jeeva faces list
     self.faces = {"eth0":1,"lo":2}
     self.faces_to_dev = {1: "H1", 2: "S2"}
+    #self.face_to_dev = {"S1":1,"H2":2}
     self.face_thread = {}
 
-    #This switch name is used in ICN messages
     self.switch_name = "S1"
 
+    print(" ICN SWITCH BASE: Add port")
     for port in ports:
       self.add_port(port)
 
-    #Initiatialize FIB with contents provided by direct hosts
     self.init_name_table()
+
 
     if features is not None:
       self.features = features
     else:
       # Set up default features
+      #Jeeva: Switch features have to be changed
+      print(" ICN SWITCH BASE: Gonna call SwitchFeatures Function")
       self.features = SwitchFeatures()
       self.features.cap_flow_stats = True
       self.features.cap_table_stats = True
@@ -217,18 +229,26 @@ class ICNSwitchBase (object):
       if not h: continue
       self.flow_mod_handlers[value] = h
 
+    #Jeeva : for now hard code the connected hosts here
+    self.hosts = {}
+    #self.add_hosts(self.hosts)
+
+    print(" ICN SWITCH : SNIFF THE FACES for incoming packets ")
     self.sniff_faces()
 
   def init_name_table(self):
+    print("*****Initializing flow table****")
     match = ofp_match(interest_name="/test/host1")
     self.table.add_entry(FibTableEntry(match=match,actions=[ofp_action_outputface(face=1)]))
+    print("*****Done intializinf flow table for switch 2****")
 
-  #Method for the switch to listen on faces for the data
+  #Jeeva : Functions for the switch to listen on faces for the data
   def sniff_faces(self):
     for k,v in self.faces.iteritems():
       start_new_thread(self.sniff_thread, (k,v))
 
   def sniff_thread(self,interface,face):
+    print(" ICN SWITCH : Sniffing :", interface)
     def eth_addr(a):
       b = "%.2x:%.2x:%.2x:%.2x:%.2x:%.2x" % (ord(a[0]), ord(a[1]), ord(a[2]), ord(a[3]), ord(a[4]), ord(a[5]))
       return b
@@ -262,6 +282,7 @@ class ICNSwitchBase (object):
 
       # Parse IP packets, IP Protocol number = 8
       if eth_protocol == 8:
+        # print(" IP Packet :", eth_protocol)
         '''
         Do nothing
         '''
@@ -269,58 +290,98 @@ class ICNSwitchBase (object):
         if eth_protocol == 1402:
           if original_packet[1][0] in self.faces:
             if original_packet[1][1] == 3:
-              #print (' ICN SWITCH : ICN protocol packet : ', eth_protocol)
-              #print 'Destination MAC : ' + eth_addr(packet[0:6]) + ' Source MAC : ' + eth_addr(
-                #packet[6:12]) + ' Protocol : ' + str(eth_protocol)
-              #print ('Data : ', data)
+              print (' ICN SWITCH : ICN protocol packet : ', eth_protocol)
+              print 'Destination MAC : ' + eth_addr(packet[0:6]) + ' Source MAC : ' + eth_addr(
+                packet[6:12]) + ' Protocol : ' + str(eth_protocol)
+              print ('Data : ', data)
               if "Data:" not in data:
                 if "Interest:" in data:
                   data_split = data.split(",")
                   interest_part = data_split[0]
                   seen_part = data_split[1]
                   if seen_part == "To:"+ self.switch_name :
-                    #print(" ICN SWITCH : I am seeing this INTEREST packet for the 1st time : Sending to rx_packet_from_face")
+                    print(" ICN SWITCH : I am seeing this INTEREST packet for the 1st time : Sending to rx_packet_from_face")
                     face = original_packet[1][0]
-                    #print face
-                    #print self.faces[face]
+                    print face
+                    print self.faces[face]
                     packet = ethernet(raw=interest_part)
                     self.rx_packet_from_face(packet, self.faces[face])
                   else:
-                    #print(" ICN SWITCH : I have already seen this INTEREST packet : Doing Nothing")
-                    '''Do nothing'''
+                    print(" ICN SWITCH : I have already seen this INTEREST packet : Doing Nothing")
                 elif "Content:" in data:
-                  print(" CONTENT packet from Host ")
+                  print(" ICN SWITCH : This is a CONTENT packet")
                   data_split = data.split(",")
                   content_part = data_split[0]
                   seen_part = data_split[1]
                   if seen_part == "To:" + self.switch_name:
-                    #print(
-                      #" ICN SWITCH : I am seeing this CONTENT packet for the 1st time : Sending to rx_packet_from_face")
+                    print(
+                      " ICN SWITCH : I am seeing this CONTENT packet for the 1st time : Sending to rx_packet_from_face")
                     # face = original_packet[1][0]
                     # print face
                     # print self.faces[face]
                     # packet = ethernet(raw=interest_part)
                     # self.rx_packet_from_face(packet, self.faces[face])
                     self.send_content_announcement(content_part)
-                    #print("-----------------Sent content announcement------------")
+                    print("-----------------Sent content announcement------------")
                 else:
-                  print(" Neither Interest Nor Data packet ")
+                  print(" ICN SWITCH : Neither Interest Nor Data packet")
               else :
                 data_split = data.split(",")
                 interest_part = data_split[0]
                 data_part = data_split[1]
                 seen_part = data_split[2]
                 if seen_part == "To:" + self.switch_name:
-                  #print(" ICN SWITCH : I am seeing this DATA packet for the 1st time : Sending to rx_packet_from_face")
+                  print(" ICN SWITCH : I am seeing this DATA packet for the 1st time : Sending to rx_packet_from_face")
                   face = original_packet[1][0]
-                  #print face
-                  #print self.faces[face]
+                  print face
+                  print self.faces[face]
                   raw_data = interest_part+","+data_part
                   packet = ethernet(raw=raw_data)
                   self.rx_packet_from_face(packet, self.faces[face])
                 else:
-                  #print(" ICN SWITCH : I have already seen this DATA packet : Doing Nothing")
-                  ''' Do nothing '''
+                  print(" ICN SWITCH : I have already seen this DATA packet : Doing Nothing")
+
+
+  def add_hosts(self,hosts):
+    print (" ICN SWITCH : Going to add two hosts to switch")
+
+    #Jeeva : Now use INET socket, later on change to Raw socket
+    listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    try:
+      print(dir(self))
+      listener.bind(("134.226.36.95", 7777))
+      print(" LIstening :", listener)
+    except socket.error as (errno, strerror):
+      print "Socket error"
+      return
+
+    listener.listen(16)#
+
+    for i in range(0,2) :
+      connection, new_sock = listener.accept()
+      #new_sock.send(" Hi Host"+str(i))
+      print(" ICN SWITCH : Connected to the host :" , connection.getpeername()[1])
+      in_port = connection.getpeername()[1]
+      hosts[in_port]=connection
+      #self.add_port(in_port)
+      start_new_thread(self.host_thread, (connection,in_port))
+
+  def host_thread(self,connection, in_port):
+    print (" ICN SWITCH : Started Host Thread")
+    while True:
+      # Receiving from client
+      data = connection.recv(1024)
+      raw_data = data
+      print(" Interest/data received from host : ", raw_data)
+      packet = ethernet(raw=raw_data)
+      self.rx_packet(packet, in_port)
+      if not data:
+        print (" No data")
+        break
+
+    # came out of loop
+    connection.close()
 
   def _gen_port_name (self, port_no):
     print ("%s.%s"%(dpid_to_str(self.dpid, True).replace('-','')[:12], port_no))
@@ -330,7 +391,7 @@ class ICNSwitchBase (object):
     return EthAddr("02%06x%04x" % (self.dpid % 0x00FFff, port_no % 0xffFF))
 
   def generate_port (self, port_no, name = None, ethaddr = None):
-    #print(" In generate port function")
+    print(" In generate port function")
     dpid = self.dpid
     p = ofp_phy_port()
     p.port_no = port_no
@@ -349,9 +410,9 @@ class ICNSwitchBase (object):
     p.supported = OFPPF_10MB_HD
     p.peer = OFPPF_10MB_HD
 
-    #print ("\n")
-    #print (" ICN SWITCH : Generated port : ", p)
-    #print ("\n")
+    print ("\n")
+    print (" ICN SWITCH : Generated port : ", p)
+    print ("\n")
     return p
 
   @property
@@ -372,8 +433,8 @@ class ICNSwitchBase (object):
     """
     # Currently, we only use this for sending flow_removed messages
 
-    '''print(" ICN SWITCH BASE : _handle_FibTableModification : I am the listener who caught the Fib table modification "
-          "event")'''
+    print(" ICN SWITCH BASE : _handle_FibTableModification : I am the listener who caught the Fib table modification "
+          "event")
 
     if not event.removed: return
 
@@ -393,11 +454,11 @@ class ICNSwitchBase (object):
     """
     Handle an incoming OpenFlow message
     """
-    #print(" ICN SWITCH BASE , rx_message : Got a message :  ", msg.show())
+    print(" ICN SWITCH BASE , rx_message : Got a message :  ", msg.show())
     #print(" ICN SWITCH BASE , rx_message : Got a message :  ", msg._from_controller)
     ofp_type = msg.header_type
     h = self.ofp_handlers.get(ofp_type)
-    #print(" ICN SWITCH BASE , rx_message : Handler identified for the message :  ", h)
+    print(" ICN SWITCH BASE , rx_message : Handler identified for the message :  ", h)
     if h is None:
       raise RuntimeError("No handler for ofp_type %s(%d)"
                          % (ofp_type_map.get(ofp_type), ofp_type))
@@ -409,7 +470,7 @@ class ICNSwitchBase (object):
     """
     Set this switch's connection.
     """
-    #print(" ICN SWITCH BASE : Setting connection")
+    print(" ICN SWITCH BASE : Setting connection")
     self._has_sent_hello = False
     connection.set_message_handler(self.rx_message)
     self._connection = connection
@@ -418,11 +479,11 @@ class ICNSwitchBase (object):
     """
     Send a message to this switch's communication partner
     """
-    #print(" ICN SWITCH BASE: Send Function (Send a message to this switch's communication partner )")
+    print(" ICN SWITCH BASE: Send Function (Send a message to this switch's communication partner )")
     if connection is None:
       connection = self._connection
     if connection:
-      #print("ICN SWITCH BASE: connection partner is connected ", message.show())
+      print("ICN SWITCH BASE: connection partner is connected ", message.show())
       connection.send(message)
     else:
       self.log.debug("Asked to send message , but not connected")
@@ -452,37 +513,37 @@ class ICNSwitchBase (object):
                              actions = self.features.action_bits,
                              ports = self.ports.values())
     self.send(msg)
-    #print(" ICN SWITCH : Sending Content Announcement to the controller")
-    #print("\n\n")
+    print(" ICN SWITCH : Sending Content Announcement to the controller")
+    print("\n\n")
     #self.send_content_announcement("/test/host1")
 
   def _rx_add_cs_entry (self, ofp, connection):
     """
     Handles flow mods
     """
-    #print("\n\n------------- Handling ADD CS ENTRY message in Switch---------------")
+    print("\n\n------------- Handling ADD CS ENTRY message in Switch---------------")
     #print(" ****** Match = ", ofp.match)
     #print(" ****** Interest_name  = ", ofp.interest_name)
     #print(" ****** Data  = ", ofp.data)
     match = ofp_match(interest_name = ofp.interest_name.split("$")[0])
     new_entry = ContentStoreEntry(match=match,data=ofp.data)
     self.content_store.add_entry(new_entry)
-    #print("\n\n------------- Added new CS entry ---------------")
+    print("\n\n------------- Added new CS entry ---------------")
 
   def _rx_clear_cs (self, ofp, connection):
     """
     Handles flow mods
     """
-    #print("\n\n------------- Handling CLEAR CS message in Switch---------------")
+    print("\n\n------------- Handling CLEAR CS message in Switch---------------")
     #self.content_store=
-    #print("\n\n------------- Added new CS entry ---------------")
+    print("\n\n------------- Added new CS entry ---------------")
     self.content_store.clear_table()
 
   def _rx_data_from_controller_cache (self, ofp, connection):
     """
     Handles flow mods
     """
-    #print("\n\n------------- Handling  DATA from controller cache message in Switch---------------")
+    print("\n\n------------- Handling  DATA from controller cache message in Switch---------------")
     #print(" Interest_name :", ofp.interest_name.split("$")[0])
     interest_name = ofp.interest_name.split("$")[0]
     #print(" Data :", ofp.data)
@@ -494,7 +555,7 @@ class ICNSwitchBase (object):
 
     ports = self.pit_table.fetch_faces_from_pit_entry(interest_name)
     if (ports != None):
-      #print (" ICN SWITCH : faces are returned :", ports)
+      print (" ICN SWITCH : faces are returned :", ports)
       for port in ports:
         self._output_packet(packet, port, OFPP_CONTROLLER)
 
@@ -513,16 +574,16 @@ class ICNSwitchBase (object):
     """
     Handles flow mods
     """
-    #print("\n\n------------- Handling  FIB mod from controller ---------------")
-    #print ofp.interest_name
-    #print dir(ofp.face)
+    print("\n\n------------- Handling  FIB mod from controller ---------------")
+    print ofp.interest_name
+    print dir(ofp.face)
 
     match = of.ofp_match(interest_name = ofp.interest_name)
     action = of.ofp_action_outputface(face=(ofp.face)[0])
     new_fib_entry = FibTableEntry(match=match,actions=[action])
     self.table.add_entry(new_fib_entry)
 
-    #print("\n\n------------- Added new FIB table entry ---------------")
+    print("\n\n------------- Added new FIB table entry ---------------")
     #print(" Interest_name :", ofp.interest_name.split("$")[0])
 
 
@@ -551,7 +612,7 @@ class ICNSwitchBase (object):
     """
     Handles packet_outs
     """
-    #print("ICN SWITCH BASE : rx packet out ")
+    print("ICN SWITCH BASE : rx packet out ")
     self.log.debug("Packet out details: %s", packet_out.show())
 
     if packet_out.data:
@@ -787,7 +848,7 @@ class ICNSwitchBase (object):
     self._has_sent_hello = True
     self.log.debug("Sent hello")
     msg = ofp_hello(xid=0)
-    #print(" ICN SWITCH BASE : send_hello -> hello msg.show()", msg.show())
+    ##print(" ICN SWITCH BASE : send_hello -> hello msg.show()", msg.show())
     self.send(msg)
 
 
@@ -887,7 +948,7 @@ class ICNSwitchBase (object):
         Call self.table.entry_for_packet (passing the packet and in_port)
 
     """
-    ##print(self)
+    #print(self)
     #print(" ICN Switch BASE: rx_packet (process a dataplane packet) ")
 
     #Jeeva : Ensure the packet is an ethernet packet
@@ -906,7 +967,7 @@ class ICNSwitchBase (object):
     #print(" *$*$$$$$$$****** FUll packet Received at Switch ethertype:", packet.getNameForType(packet.effective_ethertype))
     #print(" *$*$$$$$$$****** FUll packet Received at Switch IP type:", packet.IP_TYPE)
     #print(" *$*$$$$$$$****** FUll packet Received at Switch Pay Header :", packet.hdr(packet.payload))
-    ##print(" *$*$$$$$$$****** FUll packet Received at Switch :", packet.m)
+    #print(" *$*$$$$$$$****** FUll packet Received at Switch :", packet.m)
     #print(" *$*$$$$$$$****** FUll packet Received at Switch next:", packet.next)
     #print(" *$*$$$$$$$****** FUll packet Received at Switch parsed:", packet.parsed)
     #print(" *$*$$$$$$$****** FUll packet Received at Switch payload:", packet.payload)
@@ -915,7 +976,7 @@ class ICNSwitchBase (object):
     #print(" *$*$$$$$$$****** FUll packet Received at Switch type:", packet.type)
 
     #print(" *$*$$$$$$$****** FUll packet Received at Switch String :", packet._to_str())
-    ##print(" *$*$$$$$$$****** FUll packet Received at Switch :", packet.un)
+    #print(" *$*$$$$$$$****** FUll packet Received at Switch :", packet.un)
 
 
     raw_packet = packet.raw
@@ -928,7 +989,7 @@ class ICNSwitchBase (object):
 
         content_store = self.content_store.content_store_entry_for_packet(packet, face)
         if (content_store != None):
-          print(" CS entry found : ",content_store)
+          print(" ICN SWITCH : CS entry found : ",content_store)
           '''
           if in_port in self.hosts:
             print(" Connection to send the data back:", self.hosts[in_port])
@@ -956,14 +1017,15 @@ class ICNSwitchBase (object):
               print(" ICN SWITCH BASE : FIB Entry Found")
               self._matched_count += 1
               fib_entry.touch_packet(len(packet))
-              print(" ICN SWITCH BASE : Gonna process the packet")
-              self._process_actions_for_packet_face(fib_entry.actions, packet, face)
               if "Interest" in raw_packet:
                 print(" ICN SWITCH BASE : Gonna send the packet out in the face, gonna add in PIT")
                 match = of.ofp_match.from_packet(packet)
-                print(" ************ Gonn add PIT entry with the face :", face)
+                #print(" ************ Gonn add PIT entry with the face :", face)
                 new_pit_entry = PitTableEntry(match=match, faces=[face])
                 self.pit_table.add_entry(new_pit_entry)
+              print(" ICN SWITCH BASE : Gonna process the packet")
+              self._process_actions_for_packet_face(fib_entry.actions, packet, face)
+
             else:
 
               # Jeeva : Send to controller
@@ -979,7 +1041,7 @@ class ICNSwitchBase (object):
               if "Interest" in raw_packet :
                 print(" ICN SWITCH BASE : Sent the interest packet to controller, gonna add in PIT")
                 match = of.ofp_match.from_packet(packet)
-                print(" ************ Gonn add PIT entry with the face :", face)
+                #print(" ************ Gonn add PIT entry with the face :", face)
                 new_pit_entry = PitTableEntry(match=match,faces=[face])
                 self.pit_table.add_entry(new_pit_entry)
 
@@ -1171,10 +1233,10 @@ class ICNSwitchBase (object):
     Sends a port_status message to the controller
     """
     try:
-      print("Trying to add port")
+      #print("Trying to add port")
       port_no = port.port_no
     except:
-      print("Exception in trying to add port")
+      #print("Exception in trying to add port")
       port_no = port
       port = self.generate_port(port_no, self.dpid)
     if port_no in self.ports:
@@ -1244,13 +1306,13 @@ class ICNSwitchBase (object):
   #Jeeva
 
   def _output_packet_face(self,packet,face,in_port=None,max_len=None):
-    print("\n\n")
-    print("-------------------------------------")
-    print(" Have to sent the packet out in the face")
-    print("-------------------------------------")
-    print("Packet :", packet)
-    print("Face :", face)
-    print("\n\n")
+    #print("\n\n")
+    #print("-------------------------------------")
+    #print(" Have to sent the packet out in the face")
+    #print("-------------------------------------")
+    #print("Packet :", packet)
+    #print("Face :", face)
+    #print("\n\n")
 
     s = socket.socket(socket.AF_PACKET, socket.SOCK_RAW, socket.ntohs(0x0003))
 
