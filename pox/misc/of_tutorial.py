@@ -63,8 +63,8 @@ class Tutorial (object):
     self.init_content_store()
 
   def init_content_store(self):
-    print("\n\n\n")
-    print(" OF_TUTORIAL : initContentStore Function")
+    #print("\n\n\n")
+    #print(" OF_TUTORIAL : initContentStore Function")
     for k,v in self.content_dict.iteritems():
       #print(" %%%%%%%%%%%%%%%% Inside loop")
       #match=of.ofp_match(interest_name=k)
@@ -151,14 +151,14 @@ class Tutorial (object):
 
     #Check in controller cache first
     if interest_name in self.content_dict:
-      print(" Controller has the data for the requested interest")
+      #print(" Controller has the data for the requested interest")
       msg=of.ofp_data_from_controller_cache()
       msg.interest_name = interest_name+"$"
       msg.data = self.content_dict[interest_name]
       self.connection.send(msg)
-      print(" Controller sent the data to Switch")
+      #print(" Controller sent the data to Switch")
     else: #Check in Name Table
-      print(" Interest Name :", interest_name)
+      #print(" Interest Name :", interest_name)
       if interest_name in self.name_table:
         dev = self.name_table[interest_name]
         #print("OF_TUTORIAL : Port to send :", port)
@@ -168,12 +168,12 @@ class Tutorial (object):
         if dev in dev_list :
           face = dev_list[dev]
 
-        print ("Face for the switch to send out the information :", face)
+        #print ("Face for the switch to send out the information :", face)
 
         #Jeeva : push a flow mod message
 
 
-        print(" OF_TUTORIAL : Sending FIB Mod message")
+        #print(" OF_TUTORIAL : Sending FIB Mod message")
         #msg = of.ofp_flow_mod()
         #print msg
         #msg.match = of.ofp_match.from_packet(packet)
@@ -187,13 +187,13 @@ class Tutorial (object):
         msg.interest_name=interest_name
         msg.face=face
         self.connection.send(msg)
-        print("OF_TUTORIAL : Sent Fib mod message")
+        #print("OF_TUTORIAL : Sent Fib mod message")
 
-        print(" OF_TUTORIAL : Gonna resend the packet in the corressponding port through switch")
+        #print(" OF_TUTORIAL : Gonna resend the packet in the corressponding port through switch")
         self.resend_packet_face(packet, face)  # Jeeva : Change from packet to packet_in later
       else:
-        print (" OF_TUTORIAL : This interest is not in the controller database :", interest_name)
-        print (" OF_TUTORIAL : Please ask the switch to drop the packet")
+        #print (" OF_TUTORIAL : This interest is not in the controller database :", interest_name)
+        print (" Ask the switch to drop the packet")
 
     #if interest_name == "/test/hostfetch":
 
@@ -202,13 +202,13 @@ class Tutorial (object):
     """
         Handles content announcement messages from the switch.
         """
-    print(" ********* Handling Content Announcement messages  *******************")
+    #print(" ********* Handling Content Announcement messages  *******************")
     packet = event.parsed.raw
     content_interest_name = (packet.split("Content:"))[1]
-    print content_interest_name
+    #print content_interest_name
     self.name_table[content_interest_name] = self.connected_switches[event.dpid]
-    print(" ********* Added Content Announcement *******************")
-    print self.name_table
+    #print(" ********* Added Content Announcement *******************")
+    #print self.name_table
     #msg = of.ofp_clear_cs()
     #self.connection.send(msg)
     #print(" ********* Sent Content Store Clear message ***************")
@@ -217,10 +217,10 @@ class Tutorial (object):
     """
     Handles packet in messages from the switch.
     """
-    print(" ********* Handling CSFull Event  *******************")
+    #print(" ********* Handling CSFull Event  *******************")
     msg= of.ofp_clear_cs()
     self.connection.send(msg)
-    print(" ********* Sent Content Store Clear message ***************")
+    #print(" ********* Sent Content Store Clear message ***************")
 
   def _handle_PacketIn (self, event):
     """

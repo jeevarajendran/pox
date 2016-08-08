@@ -728,7 +728,7 @@ class ofp_phy_port (ofp_base):
       pass
     elif not isinstance(self.hw_addr, EthAddr):
       return "hw_addr is not a valid format"
-    print("$$$$$$$$$$$$$", self.name)
+    #print("$$$$$$$$$$$$$", self.name)
     if len(self.name) > OFP_MAX_PORT_NAME_LEN:
       return "name is too long"
     return None
@@ -966,7 +966,10 @@ class ofp_match (ofp_base):
       in_port = packet.in_port
       packet = ethernet(packet.data)
     else : #Jeeva
-      print(" NAME LIB : ofp_match : from_packet : Not Packet_in, Just an ethernet packet")
+      '''
+      Do nothing
+      '''
+      #print(" NAME LIB : ofp_match : from_packet : Not Packet_in, Just an ethernet packet")
     assert assert_type("packet", packet, ethernet, none_ok=False)
 
     #print(" NAME LIB : ofp_match : from_packet : packet data :", packet.raw)
@@ -1508,7 +1511,7 @@ class ofp_action_generic (ofp_action_base):
 @openflow_action('OFPAT_ADDPIT', 900)
 class ofp_action_addpit (ofp_action_base):
   def __init__ (self, **kw):
-    print(" NAME LIB : ofp_action_add_pit ")
+    #print(" NAME LIB : ofp_action_add_pit ")
     #print(" NAME LIB : ofp_action_add_pit kw :", kw)
     self.ports = None # Purposely bad -- require specification
     self.interest_name = ""
@@ -1558,7 +1561,7 @@ class ofp_action_addpit (ofp_action_base):
 @openflow_action('OFPAT_OUTPUTFACE', 901)
 class ofp_action_outputface (ofp_action_base):
   def __init__ (self, **kw):
-    print(" ****** NAME LIB : ofp_action_output_face ")
+    #print(" ****** NAME LIB : ofp_action_output_face ")
     #print(" NAME LIB : ofp_action_output : kw :", kw)
     self.face = None # Purposely bad -- require specification
     self.max_len = 0xffFF
@@ -1578,7 +1581,7 @@ class ofp_action_outputface (ofp_action_base):
     return packed
 
   def unpack (self, raw, offset=0):
-    print("Inside unpack function of ofp_action_outputface")
+    #print("Inside unpack function of ofp_action_outputface")
     _offset = offset
     offset,(self.type, length, self.face, self.max_len) = \
         _unpack("!HHHH", raw, offset)
@@ -1609,7 +1612,7 @@ class ofp_action_outputface (ofp_action_base):
 @openflow_action('OFPAT_OUTPUT', 0)
 class ofp_action_output (ofp_action_base):
   def __init__ (self, **kw):
-    print(" NAME LIB : ofp_action_output ")
+    #print(" NAME LIB : ofp_action_output ")
     #print(" NAME LIB : ofp_action_output : kw :", kw)
     self.port = None # Purposely bad -- require specification
     self.max_len = 0xffFF
@@ -2355,7 +2358,7 @@ class ofp_flow_mod (ofp_header):
     return None
 
   def pack (self):
-    print ("__________ Gonna pack Flow Mod ------------------- ", self)
+    #print ("__________ Gonna pack Flow Mod ------------------- ", self)
     """
     Packs this object into its wire format.
     May normalize fields.
@@ -2381,64 +2384,64 @@ class ofp_flow_mod (ofp_header):
     if buffer_id is None:
       buffer_id = NO_BUFFER
 
-    print("__________ Gonna pack Flow Mod ------------------- po: ", po)
+    #print("__________ Gonna pack Flow Mod ------------------- po: ", po)
     assert self._assert()
     packed = b""
     packed += ofp_header.pack(self)
-    print("__________ Gonna pack Flow Mod ------------------- match :", self.match)
-    print("__________ Gonna pack Flow Mod ------------------- match interest :", self.match.interest_name)
+    #print("__________ Gonna pack Flow Mod ------------------- match :", self.match)
+    #print("__________ Gonna pack Flow Mod ------------------- match interest :", self.match.interest_name)
     packed += self.match.pack(flow_mod=True)
     packed += struct.pack("!QHHHHLHH", self.cookie, self.command,
                           self.idle_timeout, self.hard_timeout,
                           self.priority, buffer_id, self.out_port,
                           self.flags)
     for i in self.actions:
-      print("__________ Gonna pack Flow Mod ------------------- action :", i)
+      #print("__________ Gonna pack Flow Mod ------------------- action :", i)
       packed += i.pack()
 
     if po:
-      print("__________ Gonna pack Flow Mod ------------------- inside if po ")
+      #print("__________ Gonna pack Flow Mod ------------------- inside if po ")
       packed += ofp_barrier_request().pack()
       packed += po.pack()
     return packed
 
   def unpack (self, raw, offset=0):
-    print("+++++ Unpacking FLow MOD :",len(raw))
-    print("\n")
+    #print("+++++ Unpacking FLow MOD :",len(raw))
+    #print("\n")
 
     offset,length = self._unpack_header(raw, offset)
-    print("check 1 :")
-    print("offset :", offset)
-    print("length :", length)
+    #print("check 1 :")
+    #print("offset :", offset)
+    #print("length :", length)
     offset = self.match.unpack(raw, offset, flow_mod=True)
-    print("\n")
-    print("+++++ Unpacking FLow MOD : match :", self.match)
-    print("\n")
-    print("+++++ Unpacking FLow MOD : match interest :", self.match.interest_name)
-    print("\n")
-    print("check 2 :")
-    print("offset :", offset)
-    print("length :", length)
+    #print("\n")
+    #print("+++++ Unpacking FLow MOD : match :", self.match)
+    #print("\n")
+    #print("+++++ Unpacking FLow MOD : match interest :", self.match.interest_name)
+    #print("\n")
+    #print("check 2 :")
+    #print("offset :", offset)
+    #print("length :", length)
     #print("reamining msg:", raw[:offset])
     offset,(self.cookie, self.command, self.idle_timeout,
             self.hard_timeout, self.priority, self._buffer_id,
             self.out_port, self.flags) = \
             _unpack("!QHHHHLHH", raw, offset)
-    print("check 3 :")
-    print("offset :", offset)
-    print("length :", length)
+    #print("check 3 :")
+    #print("offset :", offset)
+    #print("length :", length)
     if "*" in raw:
-      print ("offset after rading cokkies blah lah :", offset)
+      #print ("offset after rading cokkies blah lah :", offset)
       offset,self.actions = _unpack_actions(raw,
           len(raw)-(32 + len(self.match)+len(self.match.interest_name)+2), offset)
-      print("Actions found :", self.actions)
+      #print("Actions found :", self.actions)
       #print ("length in * :", length)
       #print("length(self) in * :", len(self))
       #print ("length(self) +  in * :",  (len(self) + len(self.match.interest_name)+2) )
-      print("Len(raw):", len(raw))
-      print("other side length :", len(self) + len(self.match.interest_name) + 2)
+      #print("Len(raw):", len(raw))
+      #print("other side length :", len(self) + len(self.match.interest_name) + 2)
       assert len(raw) == ( len(self) + len(self.match.interest_name)+2 )
-      print("Passed the assert")
+      #print("Passed the assert")
     else :
       #print("length in :", length)
       #print("length(self) in :", len(self))
@@ -2452,11 +2455,11 @@ class ofp_flow_mod (ofp_header):
       return offset,length
 
   def __len__ (self):
-    print("Length of match in __len__ fn = ", len(self.match))
+    #print("Length of match in __len__ fn = ", len(self.match))
     l = 32 + len(self.match)
     for i in self.actions:
       l += len(i)
-    print("Total length in __len__ fn = ", l)
+    #print("Total length in __len__ fn = ", l)
     return l
 
   def __eq__ (self, other):
@@ -3906,7 +3909,7 @@ class ofp_content_announcement (ofp_header):
     return None
 
   def pack(self):
-    print("In Pack method")
+    #print("In Pack method")
     assert self._assert()
 
     packed = b""
@@ -3921,14 +3924,14 @@ class ofp_content_announcement (ofp_header):
     return (offset + len(interest_name), interest_name)  # '+1' is for $ delimiter
 
   def unpack(self, raw, offset=0):
-    print("IN unpack method, total length :", len(raw))
+    #print("IN unpack method, total length :", len(raw))
     offset, length = self._unpack_header(raw, offset)
     # print("offset = ", offset)
-    print("length = ", length)
+    #print("length = ", length)
     offset, self.interest_name = self._read_interest(raw, offset, length)
 
     # print("offset = ", offset)
-    print("interest_name = ", self.interest_name)
+    #print("interest_name = ", self.interest_name)
     #offset, self.data = _read(raw, offset, length - offset)  # (length-offset)- Subtract the previously read bytes
     # print("offset = ", offset)
     # print("Data = ", self.data)
@@ -3987,7 +3990,7 @@ class ofp_data_from_controller_cache(ofp_header):
     return None
 
   def pack(self):
-    print("In Pack method")
+    #print("In Pack method")
     assert self._assert()
 
     packed = b""
@@ -4003,7 +4006,7 @@ class ofp_data_from_controller_cache(ofp_header):
     return (offset + len(interest_name) + 1, interest_name)  # '+1' is for $ delimiter
 
   def unpack(self, raw, offset=0):
-    print("IN unpack method, total length :", len(raw))
+    #print("IN unpack method, total length :", len(raw))
     offset, length = self._unpack_header(raw, offset)
     #print("offset = ", offset)
     #print("length = ", length)
@@ -4069,7 +4072,7 @@ class ofp_clear_cs (ofp_header):
     return None
 
   def pack (self):
-    print("In Pack method")
+    #print("In Pack method")
     assert self._assert()
 
     packed = b""
@@ -4078,7 +4081,7 @@ class ofp_clear_cs (ofp_header):
     return packed
 
   def unpack (self, raw, offset=0):
-    print("IN unpack method, total length :", len(raw))
+    #print("IN unpack method, total length :", len(raw))
     offset,length = self._unpack_header(raw, offset)
     assert length == len(self)
     return offset,length
@@ -4131,7 +4134,7 @@ class ofp_fib_mod(ofp_header):
     return None
 
   def pack(self):
-    print("In Pack method")
+    #print("In Pack method")
     assert self._assert()
 
     packed = b""
@@ -4159,12 +4162,12 @@ class ofp_fib_mod(ofp_header):
     return (offset + len(interest_name) + 1, interest_name)  # '+1' is for $ delimiter
 
   def unpack(self, raw, offset=0):
-    print("IN unpack method, total length :", len(raw))
+    #print("IN unpack method, total length :", len(raw))
     offset, length = self._unpack_header(raw, offset)
     offset, self.face = _unpack("!H", raw, offset)
-    print("Face : ", self.face)
+    #print("Face : ", self.face)
     offset, self.interest_name = _read(raw, offset, length - 10)
-    print("Interest name : ", self.interest_name)
+    #print("Interest name : ", self.interest_name)
     assert length == len(self)
     return offset, length
 
@@ -4238,7 +4241,7 @@ class ofp_add_cs_entry (ofp_header):
     return None
 
   def pack (self):
-    print("In Pack method")
+    #print("In Pack method")
     assert self._assert()
 
     packed = b""
@@ -4265,7 +4268,7 @@ class ofp_add_cs_entry (ofp_header):
     return (offset + len(interest_name)+1, interest_name)# '+1' is for $ delimiter
 
   def unpack (self, raw, offset=0):
-    print("IN unpack method, total length :", len(raw))
+    #print("IN unpack method, total length :", len(raw))
     offset,length = self._unpack_header(raw, offset)
     #print("offset = ", offset)
     #print("length = ", length)
@@ -4943,11 +4946,11 @@ def _unpack_actions (b, length, offset=0):
   offset, if specified, is where in b to start decoding
   returns (next_offset, [Actions])
   """
-  print(" Inside _unpack_actions function")
-  print("Buffer Length :", len(b))
-  print("length:", length)
+  #print(" Inside _unpack_actions function")
+  #print("Buffer Length :", len(b))
+  #print("length:", length)
   if (len(b) - offset) < length: raise UnderrunError
-  print("len(b)-offset>length")
+  #print("len(b)-offset>length")
   actions = []
   end = length + offset
   while offset < end:
@@ -4959,9 +4962,9 @@ def _unpack_actions (b, length, offset=0):
       a = ofp_action_generic()
     else:
       a = a()
-      print(" a???? :", a)
-    print("Gonna call unpack for the action")
-    print("b[offset:offset+l]", b[offset:offset+l])
+      #print(" a???? :", a)
+    #print("Gonna call unpack for the action")
+    #print("b[offset:offset+l]", b[offset:offset+l])
     a.unpack(b[offset:offset+l])
     assert len(a) == l
     actions.append(a)

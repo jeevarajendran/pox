@@ -67,7 +67,7 @@ import traceback
 #Jeeva : handler for content announcement
 
 def handle_CONTENT_ANNOUNCEMENT (con,msg): #A
-  print("***** Handling Content Announcement ***** ")
+  #print("***** Handling Content Announcement ***** ")
   e = con.ofnexus.raiseEventNoErrors(ContentAnnouncement, con, msg)
   if e is None or e.halt != True:
     con.raiseEventNoErrors(ContentAnnouncement, con, msg)
@@ -76,7 +76,7 @@ def handle_CONTENT_ANNOUNCEMENT (con,msg): #A
 #Jeeva : handler for CS_FULL
 
 def handle_CS_FULL (con,msg): #A
-  print("***** Handling CS Full ***** ")
+  #print("***** Handling CS Full ***** ")
   e = con.ofnexus.raiseEventNoErrors(CsFull, con)
   if e is None or e.halt != True:
     con.raiseEventNoErrors(CsFull, con)
@@ -85,7 +85,7 @@ def handle_HELLO (con, msg): #S
   #con.msg("HELLO wire protocol " + hex(msg.version))
 
   # Send a features request
-  print(" OF : Received Hello request")
+  #print(" OF : Received Hello request")
   #print(" Jeeva controller : Got the connection from :", con.info, "\n")
   #print(" Jeeva controller : Got the connection from :", con.sock.getpeername(), "\n")
   msg = of.ofp_features_request()
@@ -194,7 +194,7 @@ def handle_PORT_STATUS (con, msg): #A
     con.raiseEventNoErrors(PortStatus, con, msg)
 
 def handle_PACKET_IN (con, msg): #A
-  print(" OF : Got packet_in message : ", msg.show(), "\n")
+  #print(" OF : Got packet_in message : ", msg.show(), "\n")
   e = con.ofnexus.raiseEventNoErrors(PacketIn, con, msg)
   #print(" *** Jeeva controller : After calling con.ofnexus.raiseEventNoErrors : e :", e, "\n")
   if e is None or e.halt != True:
@@ -635,7 +635,7 @@ class Connection (EventMixin):
 
     self.ofnexus = _dummyOFNexus
     self.sock = sock
-    print(" OF : Connection init method : Connection to switch :", self.sock.getpeername())
+    #print(" OF : Connection init method : Connection to switch :", self.sock.getpeername())
     self.buf = ''
     Connection.ID += 1
     self.ID = Connection.ID
@@ -648,7 +648,7 @@ class Connection (EventMixin):
     self.connect_time = None
     self.idle_time = time.time()
 
-    print(" OF : Controller sending Hello message to switch ")
+    #print(" OF : Controller sending Hello message to switch ")
     self.send(of.ofp_hello())
 
     self.original_ports = PortCollection()
@@ -658,7 +658,7 @@ class Connection (EventMixin):
     #TODO: set a time that makes sure we actually establish a connection by
     #      some timeout
 
-    print(" OF : Connection init method END")
+    #print(" OF : Connection init method END")
 
   @property
   def eth_addr (self):
@@ -756,7 +756,7 @@ class Connection (EventMixin):
     try:
       d = self.sock.recv(2048)
       #print("\n\n\n\n\n")
-      print(" OF : Controller RECEIVED data from switch :", d)
+      #print(" OF : Controller RECEIVED data from switch :", d)
 
     except:
       return False
@@ -765,7 +765,7 @@ class Connection (EventMixin):
     self.buf += d
     buf_len = len(self.buf)
 
-    print("$$$$$$$$ Buf len = ", buf_len)
+    #print("$$$$$$$$ Buf len = ", buf_len)
 
     offset = 0
     while buf_len - offset >= 8: # 8 bytes is minimum OF message size
@@ -775,7 +775,7 @@ class Connection (EventMixin):
 
       ofp_type = ord(self.buf[offset+1])
 
-      print(" OF : ofp_type : ", ofp_type)
+      #print(" OF : ofp_type : ", ofp_type)
 
       if ord(self.buf[offset]) != of.OFP_VERSION:
         if ofp_type == of.OFPT_HELLO:
@@ -810,8 +810,8 @@ class Connection (EventMixin):
       try:
         #print ("$$$$$$ Gonna try for handler")
         h = handlers[ofp_type]
-        print (" OF : Handler :", h)
-        print("\n\n\n\n\n")
+        #print (" OF : Handler :", h)
+        #print("\n\n\n\n\n")
         h(self, msg)
       except:
         log.exception("%s: Exception while handling OpenFlow message:\n" +
@@ -914,11 +914,11 @@ class OpenFlow_01_Task (Task):
     #print(" ***** Trying for another switch connection *****")
 
 
-    print(" ****** OF : Connecting in a socket")
+    #print(" ****** OF : Connecting in a socket")
     listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     try:
-      print(dir(self))
+      #print(dir(self))
       listener.bind((self.address, self.port))
     except socket.error as (errno, strerror):
       log.error("Error %i while binding socket: %s", errno, strerror)
@@ -936,9 +936,9 @@ class OpenFlow_01_Task (Task):
 
     log.debug(" OF : Controller Listening on %s:%s" %
               (self.address, self.port))
-    print("-----------------------------")
-    print("*****************************")
-    print("\n\n\n")
+    #print("-----------------------------")
+    #print("*****************************")
+    #print("\n\n\n")
 
     con = None
     while core.running:
