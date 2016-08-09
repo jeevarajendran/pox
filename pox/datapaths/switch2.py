@@ -988,8 +988,8 @@ class ICNSwitchBase (object):
                 #print(" ************ Gonn add PIT entry with the face :", face)
                 new_pit_entry = PitTableEntry(match=match, faces=[face])
                 self.pit_table.add_entry(new_pit_entry)
-              print(" Gonna process the packet based in the actions found in FIB")
-              self._process_actions_for_packet_face(fib_entry.actions, packet, face)
+                print(" Gonna process the packet based on the actions found in FIB")
+                self._process_actions_for_packet_face(fib_entry.actions, packet, face)
 
             else:
 
