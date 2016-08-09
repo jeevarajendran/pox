@@ -157,7 +157,9 @@ class ICNSwitchBase (object):
     for port in ports:
       self.add_port(port)
 
+    #Intialize the tables
     self.init_name_table()
+    self.init_content_store()
 
 
     if features is not None:
@@ -237,10 +239,14 @@ class ICNSwitchBase (object):
     self.sniff_faces()
 
   def init_name_table(self):
-    #print("*****Initializing flow table****")
     match = ofp_match(interest_name="/test/host2")
     self.table.add_entry(FibTableEntry(match=match,actions=[ofp_action_outputface(face=2)]))
-    #print("*****Done intializinf flow table for switch 2****")
+
+  def init_content_store(self):
+    #Entry 1
+    match = ofp_match(interest_name="/test/switch2csmatch")
+    entry = ContentStoreEntry(match=match, data=" Cached content from Switch 2")
+    self.content_store.add_entry(entry)
 
   #Jeeva : Functions for the switch to listen on faces for the data
   def sniff_faces(self):
@@ -954,19 +960,11 @@ class ICNSwitchBase (object):
 
         # Jeeva : CS check
 
-        content_store = self.content_store.content_store_entry_for_packet(packet, face)
-        if (content_store != None):
+        content_store_data = self.content_store.content_store_entry_for_packet(packet, face)
+        if (content_store_data != None):
           print(" CS entry found : ")
-          '''
-          if in_port in self.hosts:
-            print(" Connection to send the data back:", self.hosts[in_port])
-            con = self.hosts[in_port]
-            con.send(content_store)
-            print(" Sent data back to host.. Happy !!!")
-            print("\n\n")
-          else:
-            print("Have to send data to another port which is not a host")
-          '''
+          packet = ethernet(raw=content_store_data)
+          self._output_packet_face(packet, face)
         else:
           print(" No CS Entry found : Gonna look in PIT")
           # Jeeva : PIT check

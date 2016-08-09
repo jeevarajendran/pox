@@ -1191,7 +1191,8 @@ class ContentStore(EventMixin):
       #print(" Content Store : checking each entry in the content store table :", entry, "\n")
       if entry.match.interest_name == interest_name :
         #print (" Content Store entry Found : Have to send the data to the corresponding requester , which is in_port")
-        return entry.data
+        full_data = "Interest:"+interest_name+",Data:"+entry.data
+        return full_data
     #print (" No content store entry found : Have to check in PIT for pending interests now")
     return None
 
