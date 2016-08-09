@@ -61,11 +61,6 @@ from pox.openflow.util import make_type_to_unpacker_table
 from pox.openflow import *
 
 
-from traits.api \
-    import HasTraits, Instance, Str, on_trait_change
-
-from traitsui.api \
-    import View, VGroup, Item, ValueEditor, TextEditor
 
 
 from copy import deepcopy
@@ -82,238 +77,98 @@ import logging
 import struct
 import time
 
+import Tkinter as tk
+import ttk
+
+# Dictionaries
+fib_dict = {}
+cs_dict = {}
+pit_dict = {}
+
+
+
+class FIBDICT(tk.Frame):
+    def __init__(self, parent):
+        tk.Frame.__init__(self, parent)
+
+        self.tree = ttk.Treeview(self, columns=("value",))
+        self.vsb = ttk.Scrollbar(self, orient="vertical", command=self.tree.yview)
+        self.tree.configure(yscrollcommand=self.vsb.set)
+
+        self.vsb.pack(side="right", fill="y")
+        self.tree.pack(side="top", fill="both", expand=True)
+
+        self.addNode(value=fib_dict, parentNode="")
+
+    def addNode(self, value, parentNode="", key=None):
+        if key is None:
+            id = ""
+        else:
+            id = self.tree.insert(parentNode, "end", text=key)
+
+        if isinstance(value, dict):
+            self.tree.item(id, open=True)
+            for (key, value) in value.iteritems():
+                self.addNode(value, id, key)
+        else:
+            self.tree.item(id, values=(value,))
+
+class CSDICT(tk.Frame):
+    def __init__(self, parent):
+        tk.Frame.__init__(self, parent)
+
+        self.tree = ttk.Treeview(self, columns=("value",))
+        self.vsb = ttk.Scrollbar(self, orient="vertical", command=self.tree.yview)
+        self.tree.configure(yscrollcommand=self.vsb.set)
+
+        self.vsb.pack(side="right", fill="y")
+        self.tree.pack(side="top", fill="both", expand=True)
+
+        self.addNode(value=cs_dict, parentNode="")
+
+    def addNode(self, value, parentNode="", key=None):
+        if key is None:
+            id = ""
+        else:
+            id = self.tree.insert(parentNode, "end", text=key)
+
+        if isinstance(value, dict):
+            self.tree.item(id, open=True)
+            for (key, value) in value.iteritems():
+                self.addNode(value, id, key)
+        else:
+            self.tree.item(id, values=(value,))
+
+class PITDICT(tk.Frame):
+    def __init__(self, parent):
+      tk.Frame.__init__(self, parent)
+
+      self.tree = ttk.Treeview(self, columns=("value",))
+      self.vsb = ttk.Scrollbar(self, orient="vertical", command=self.tree.yview)
+      self.tree.configure(yscrollcommand=self.vsb.set)
+
+      self.vsb.pack(side="right", fill="y")
+      self.tree.pack(side="top", fill="both", expand=True)
+
+      self.addNode(value=pit_dict, parentNode="")
+
+    def addNode(self, value, parentNode="", key=None):
+      if key is None:
+        id = ""
+      else:
+        id = self.tree.insert(parentNode, "end", text=key)
+
+      if isinstance(value, dict):
+        self.tree.item(id, open=True)
+        for (key, value) in value.iteritems():
+          self.addNode(value, id, key)
+      else:
+        self.tree.item(id, values=(value,))
+
 
 
 # Multicast address used for STP 802.1D
 _STP_MAC = EthAddr('01:80:c2:00:00:00')
-
-class FIBDictEditor(HasTraits):
-  SearchTerm = Str()
-  Object = Instance( object )
-
-  def __init__(self, obj, **traits):
-    super(FIBDictEditor, self).__init__(**traits)
-    self._original_object = obj
-    self.Object = self._filter(obj)
-
-  def trait_view(self, name=None, view_elements=None):
-    return View(
-      VGroup(
-        Item( 'SearchTerm',
-          label      = 'Search:',
-          id         = 'search',
-          editor     = TextEditor(),
-          #style      = 'custom',
-          dock       = 'horizontal',
-          show_label = True
-        ),
-        Item( 'Object',
-          label      = 'Debug',
-          id         = 'debug',
-          editor     = ValueEditor(),
-          style      = 'custom',
-          dock       = 'horizontal',
-          show_label = False
-        ),
-      ),
-      title     = 'Forwarding Information Base (FIB)',
-      width     = 800,
-      height    = 600,
-      resizable = True,
-    )
-
-  @on_trait_change("SearchTerm")
-  def search(self):
-    self.Object = self._filter(self._original_object, self.SearchTerm)
-
-  def _filter(self, object_, search_term=None):
-    def has_matching_leaf(obj):
-      if isinstance(obj, list):
-        return any(
-          map(has_matching_leaf, obj))
-      if isinstance(obj, dict):
-        return any(
-          map(has_matching_leaf, obj.values()))
-      else:
-        try:
-          if not str(obj) == search_term:
-            return False
-          return True
-        except ValueError:
-           False
-
-    obj = deepcopy(object_)
-    if search_term is None:
-      return obj
-
-    if isinstance(obj, dict):
-      for k in obj.keys():
-        if not has_matching_leaf(obj[k]):
-          del obj[k]
-
-      for k in obj.keys():
-        if isinstance(obj, dict):
-          obj[k] = self._filter(obj[k], search_term)
-        elif isinstance(obj, list):
-          filter(has_matching_leaf,obj[k])
-
-    return obj
-
-class CSDictEditor(HasTraits):
-  SearchTerm = Str()
-  Object = Instance( object )
-
-  def __init__(self, obj, **traits):
-    super(CSDictEditor, self).__init__(**traits)
-    self._original_object = obj
-    self.Object = self._filter(obj)
-
-  def trait_view(self, name=None, view_elements=None):
-    return View(
-      VGroup(
-        Item( 'SearchTerm',
-          label      = 'Search:',
-          id         = 'search',
-          editor     = TextEditor(),
-          #style      = 'custom',
-          dock       = 'horizontal',
-          show_label = True
-        ),
-        Item( 'Object',
-          label      = 'Debug',
-          id         = 'debug',
-          editor     = ValueEditor(),
-          style      = 'custom',
-          dock       = 'horizontal',
-          show_label = False
-        ),
-      ),
-      title     = 'Content Store (CS)',
-      width     = 800,
-      height    = 600,
-      resizable = True,
-    )
-
-  @on_trait_change("SearchTerm")
-  def search(self):
-    self.Object = self._filter(self._original_object, self.SearchTerm)
-
-  def _filter(self, object_, search_term=None):
-    def has_matching_leaf(obj):
-      if isinstance(obj, list):
-        return any(
-          map(has_matching_leaf, obj))
-      if isinstance(obj, dict):
-        return any(
-          map(has_matching_leaf, obj.values()))
-      else:
-        try:
-          if not str(obj) == search_term:
-            return False
-          return True
-        except ValueError:
-           False
-
-    obj = deepcopy(object_)
-    if search_term is None:
-      return obj
-
-    if isinstance(obj, dict):
-      for k in obj.keys():
-        if not has_matching_leaf(obj[k]):
-          del obj[k]
-
-      for k in obj.keys():
-        if isinstance(obj, dict):
-          obj[k] = self._filter(obj[k], search_term)
-        elif isinstance(obj, list):
-          filter(has_matching_leaf,obj[k])
-
-    return obj
-
-class PITDictEditor(HasTraits):
-  SearchTerm = Str()
-  Object = Instance( object )
-
-  def __init__(self, obj, **traits):
-    super(PITDictEditor, self).__init__(**traits)
-    self._original_object = obj
-    self.Object = self._filter(obj)
-
-  def trait_view(self, name=None , view_elements=None):
-    return View(
-      VGroup(
-        Item( 'SearchTerm',
-          label      = 'Search:',
-          id         = 'search',
-          editor     = TextEditor(),
-          #style      = 'custom',
-          dock       = 'horizontal',
-          show_label = True
-        ),
-        Item( 'Object',
-          label      = 'Debug',
-          id         = 'debug',
-          editor     = ValueEditor(),
-          style      = 'custom',
-          dock       = 'horizontal',
-          show_label = False
-        ),
-      ),
-      title     = 'Pending Interest Table (PIT)',
-      width     = 800,
-      height    = 600,
-      resizable = True,
-    )
-
-  @on_trait_change("SearchTerm")
-  def search(self):
-    self.Object = self._filter(self._original_object, self.SearchTerm)
-
-  def _filter(self, object_, search_term=None):
-    def has_matching_leaf(obj):
-      if isinstance(obj, list):
-        return any(
-          map(has_matching_leaf, obj))
-      if isinstance(obj, dict):
-        return any(
-          map(has_matching_leaf, obj.values()))
-      else:
-        try:
-          if not str(obj) == search_term:
-            return False
-          return True
-        except ValueError:
-           False
-
-    obj = deepcopy(object_)
-    if search_term is None:
-      return obj
-
-    if isinstance(obj, dict):
-      for k in obj.keys():
-        if not has_matching_leaf(obj[k]):
-          del obj[k]
-
-      for k in obj.keys():
-        if isinstance(obj, dict):
-          obj[k] = self._filter(obj[k], search_term)
-        elif isinstance(obj, list):
-          filter(has_matching_leaf,obj[k])
-
-    return obj
-
-
-
-def build_sample_data():
-  def make_one_level_dict():
-    return dict(zip(range(100),
-      range(100,150) + map(str,range(150,200))))
-
-  my_data = make_one_level_dict()
-  my_data[11] = make_one_level_dict()
-  my_data[11][11] = make_one_level_dict()
-  return my_data
 
 
 class DpPacketOut (Event):
@@ -385,7 +240,7 @@ class ICNSwitchBase (object):
     self.port_stats = {}
 
     #Jeeva faces list
-    self.faces = {"eth0":1,"lo":2}
+    self.faces = {"wlan0":1,"lo":2}
     self.faces_to_dev = {1: "H1", 2: "S2"}
     #self.face_to_dev = {"S1":1,"H2":2}
     self.face_thread = {}
@@ -395,11 +250,6 @@ class ICNSwitchBase (object):
     #print(" ICN SWITCH BASE: Add port")
     for port in ports:
       self.add_port(port)
-
-    #Dictionaries
-    self.fib_dict = {}
-    self.cs_dict = {}
-    self.pit_dict= {}
 
     #Intialize the tables
     self.init_name_table()
@@ -483,29 +333,14 @@ class ICNSwitchBase (object):
     #print(" ICN SWITCH : SNIFF THE FACES for incoming packets ")
     self.sniff_faces()
 
-    #start_new_thread(self.display_fib_table, ())
+    start_new_thread(self.display_tables,())
 
-    #start_new_thread(self.display_pit, ())
-
-  def display_fib_table(self):
-    #my_data = build_sample_data()
-    b = FIBDictEditor(self.fib_dict)
-    b.configure_traits()
-    #exit_thread()
-
-
-  def display_content_store(self):
-    #my_data = build_sample_data()
-    b = CSDictEditor(self.cs_dict)
-    b.configure_traits()
-    #exit_thread()
-
-
-  def display_pit(self):
-    #my_data = build_sample_data()
-    b = PITDictEditor(self.pit_dict)
-    b.configure_traits()
-    #exit_thread()
+  def display_tables(self):
+    root = tk.Tk()
+    CSDICT(root).pack(fill="both", expand=True)
+    PITDICT(root).pack(fill="both", expand=True)
+    FIBDICT(root).pack(fill="both", expand=True)
+    root.mainloop()
 
   #Some table initialization methods
   def init_name_table(self):
@@ -514,14 +349,14 @@ class ICNSwitchBase (object):
     face = 1
     match = ofp_match(interest_name=interest_name)
     self.table.add_entry(FibTableEntry(match=match,actions=[ofp_action_outputface(face=face)]))
-    self.fib_dict[interest_name]=face
+    fib_dict[interest_name]=face
 
     #Entry 2:
     interest_name="/test/host1/video1"
     face = 1
     match = ofp_match(interest_name=interest_name)
     self.table.add_entry(FibTableEntry(match=match,actions=[ofp_action_outputface(face=face)]))
-    self.fib_dict[interest_name]=face
+    fib_dict[interest_name]=face
 
   def init_content_store(self):
     # Entry 1
@@ -530,7 +365,7 @@ class ICNSwitchBase (object):
     match = ofp_match(interest_name=interest_name)
     entry = ContentStoreEntry(match=match, data=data)
     self.content_store.add_entry(entry)
-    self.cs_dict[interest_name] = data
+    cs_dict[interest_name] = data
 
   def init_pit(self):
     '''
@@ -545,7 +380,6 @@ class ICNSwitchBase (object):
 
     #Jeeva : Functions for the switch to listen on faces for the data
   def sniff_faces(self):
-    #start_new_thread(self.display_content_store, ())
     for k,v in self.faces.iteritems():
       start_new_thread(self.sniff_thread, (k,v))
 
@@ -854,9 +688,8 @@ class ICNSwitchBase (object):
     self.table.add_entry(new_fib_entry)
     interest_name = ofp.interest_name
     face = (ofp.face)[0]
-    self.fib_dict[interest_name] = face
-    #start_new_thread(self.display_fib_table,())
-
+    fib_dict[interest_name] = face
+    start_new_thread(self.display_tables, ())
     #print("\n\n------------- Added new FIB table entry ---------------")
     #print(" Interest_name :", ofp.interest_name.split("$")[0])
 
@@ -1312,9 +1145,8 @@ class ICNSwitchBase (object):
                 self.pit_table.add_entry(new_pit_entry)
                 interest_name = match.interest_name
                 faces = [face]
-                self.pit_dict[interest_name]=faces
-                start_new_thread(self.display_pit,())
-
+                pit_dict[interest_name]=faces
+                start_new_thread(self.display_tables, ())
       else :
         print(" Not Interest/Data/Announcement packet")
     else:
@@ -1330,6 +1162,7 @@ class ICNSwitchBase (object):
         for face in faces:
           self._output_packet_face(packet, face)
       self.pit_table.delete_pit_entry(interest)
+      del pit_dict[interest]
       #Add to content store
       is_cs_full = self.content_store._entries_counter
       #print(" **************** : Content Store Status :", is_cs_full)
