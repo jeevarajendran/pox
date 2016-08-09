@@ -27,6 +27,9 @@ from pox.datapaths.nx_switch import NXSoftwareSwitch
 from pox.lib.util import dpid_to_str, str_to_dpid
 
 
+
+switches = {}
+
 class OpenFlowWorker (BackoffWorker):
   def __init__ (self, switch=None, **kw):
     print(" OpenFlowWorker ")
@@ -94,6 +97,9 @@ def do_launch (cls, address = '127.0.0.1', port = 6633, max_retry_delay = 16,
 
   switch = cls(dpid=dpid, name="sw"+str(dpid), **kw)
   _switches[dpid] = switch
+
+
+  switches[dpid] = switch
 
   port = int(port)
   max_retry_delay = int(max_retry_delay)
