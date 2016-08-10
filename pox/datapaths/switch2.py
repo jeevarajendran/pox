@@ -146,7 +146,7 @@ class ICNSwitchBase (object):
     self.port_stats = {}
 
     #Jeeva faces list
-    self.faces = {"lo":1,"wlan0":2}
+    self.faces = {"lo":1,"eth0":2}
     self.faces_to_dev = {1: "S1", 2: "H2"}
     #self.face_to_dev = {"S1":1,"H2":2}
     self.face_thread = {}

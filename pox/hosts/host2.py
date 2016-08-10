@@ -106,7 +106,7 @@ def data_thread(interface):
 # Create two threads as follows
 try:
     s = socket.socket(socket.AF_PACKET, socket.SOCK_RAW, socket.ntohs(0x0003))
-    s.bind(("wlan0", 0))
+    s.bind(("eth0", 0))
     thread.start_new_thread(interest_thread, (s,))
     thread.start_new_thread(data_thread, (s,))
 

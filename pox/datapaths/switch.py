@@ -92,6 +92,8 @@ class FIBDICT(tk.Frame):
         tk.Frame.__init__(self, parent)
 
         self.tree = ttk.Treeview(self, columns=("value",))
+        self.tree.heading('value', text='Next Hop Face')
+        self.tree.heading('#0', text='FIB : Prefix')
         self.vsb = ttk.Scrollbar(self, orient="vertical", command=self.tree.yview)
         self.tree.configure(yscrollcommand=self.vsb.set)
 
@@ -118,6 +120,8 @@ class CSDICT(tk.Frame):
         tk.Frame.__init__(self, parent)
 
         self.tree = ttk.Treeview(self, columns=("value",))
+        self.tree.heading('value', text='Data')
+        self.tree.heading('#0', text='CS : Prefix')
         self.vsb = ttk.Scrollbar(self, orient="vertical", command=self.tree.yview)
         self.tree.configure(yscrollcommand=self.vsb.set)
 
@@ -144,6 +148,8 @@ class PITDICT(tk.Frame):
       tk.Frame.__init__(self, parent)
 
       self.tree = ttk.Treeview(self, columns=("value",))
+      self.tree.heading('value', text='Waiting Faces')
+      self.tree.heading('#0', text='PIT : Prefix')
       self.vsb = ttk.Scrollbar(self, orient="vertical", command=self.tree.yview)
       self.tree.configure(yscrollcommand=self.vsb.set)
 
@@ -240,7 +246,7 @@ class ICNSwitchBase (object):
     self.port_stats = {}
 
     #Jeeva faces list
-    self.faces = {"wlan0":1,"lo":2}
+    self.faces = {"eth0":1,"lo":2}
     self.faces_to_dev = {1: "H1", 2: "S2"}
     #self.face_to_dev = {"S1":1,"H2":2}
     self.face_thread = {}
@@ -337,6 +343,8 @@ class ICNSwitchBase (object):
 
   def display_tables(self):
     root = tk.Tk()
+    root.title(" Switch 1 : Content Store > PIT > FIB")
+
     CSDICT(root).pack(fill="both", expand=True)
     PITDICT(root).pack(fill="both", expand=True)
     FIBDICT(root).pack(fill="both", expand=True)
@@ -1160,9 +1168,13 @@ class ICNSwitchBase (object):
       if (faces != True):
         print (" Faces to send the data :", faces)
         for face in faces:
+          self.pit_table.delete_pit_entry(interest)
+          print pit_dict
+          print ("**** Gonna delete the pit entry")
+          del pit_dict[interest]
+          print pit_dict
           self._output_packet_face(packet, face)
-      self.pit_table.delete_pit_entry(interest)
-      del pit_dict[interest]
+
       #Add to content store
       is_cs_full = self.content_store._entries_counter
       #print(" **************** : Content Store Status :", is_cs_full)
