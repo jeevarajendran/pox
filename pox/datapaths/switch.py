@@ -1171,7 +1171,8 @@ class ICNSwitchBase (object):
           self.pit_table.delete_pit_entry(interest)
           print pit_dict
           print ("**** Gonna delete the pit entry")
-          del pit_dict[interest]
+          if interest in pit_dict:
+            del pit_dict[interest]
           print pit_dict
           self._output_packet_face(packet, face)
 

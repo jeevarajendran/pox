@@ -5,6 +5,7 @@ import time
 import socket, sys
 from struct import *
 
+
 # Define a function for the thread
 def interest_thread( interface):
   #print "Started interest thread"
@@ -15,6 +16,8 @@ def interest_thread( interface):
   while True:
     input_data = raw_input("")
     payload = "Interest:"+input_data+",To:S1"
+    global time_before_interest
+    time_before_interest = time.clock()
     s.send(src + dst + eth_type + payload)
 
 
@@ -29,6 +32,9 @@ def data_thread( interface):
   #print "Started data thread"
   while True:
     packet = s.recvfrom(65565)
+    global time_after_data
+    time_after_data = time.clock()
+    
 
     original_packet = packet
     # packet string from tuple
@@ -89,6 +95,10 @@ def data_thread( interface):
                 print("\n")
                 print(data_part)
                 print("\n")
+                print("Interest sent time :",time_before_interest)
+                print("Data received time :", time_after_data)
+                print(" Time difference :", (time_after_data-time_before_interest))
+
               else:
                 # Host : I sent this DATA packet : Doing Nothing"
                 ''' Do nothing '''
