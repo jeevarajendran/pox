@@ -13,13 +13,16 @@ def interest_thread( interface):
   dst = "\xFE\xED\xFA\xCE\xBE\xEF"
   eth_type = "\x7A\x05"
   print("Hi User .. You can send an Interest at any time. Just Enter the interest in ther terminal")
+  i=1
   while True:
+    #print("\n")
+    #print("Iteration : ", i)
     input_data = raw_input("")
     payload = "Interest:"+input_data+",To:S1"
     global time_before_interest
     time_before_interest = time.clock()
     s.send(src + dst + eth_type + payload)
-
+    i= i+1
 
 # Convert a string of 6 characters of ethernet address into a dash separated hex string
 def eth_addr(a):
@@ -95,9 +98,9 @@ def data_thread( interface):
                 print("\n")
                 print(data_part)
                 print("\n")
-                print("Interest sent time :",time_before_interest)
-                print("Data received time :", time_after_data)
-                print(" Time difference :", (time_after_data-time_before_interest))
+                #print("Interest sent time :",time_before_interest)
+                #print("Data received time :", time_after_data)
+                print(" RTT in seconds :", time_after_data-time_before_interest)
 
               else:
                 # Host : I sent this DATA packet : Doing Nothing"
