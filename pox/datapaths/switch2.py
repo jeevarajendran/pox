@@ -242,9 +242,12 @@ class ICNSwitchBase (object):
     match = ofp_match(interest_name="/test/host2")
     self.table.add_entry(FibTableEntry(match=match,actions=[ofp_action_outputface(face=2)]))
 
+    match = ofp_match(interest_name="/test/switch1/pittest")
+    self.table.add_entry(FibTableEntry(match=match, actions=[ofp_action_outputface(face=1)]))
+
   def init_content_store(self):
     #Entry 1
-    match = ofp_match(interest_name="/test/switch2csmatch")
+    match = ofp_match(interest_name="/test/switch2/csmatch")
     entry = ContentStoreEntry(match=match, data=" Cached content from Switch 2")
     self.content_store.add_entry(entry)
 
@@ -969,7 +972,7 @@ class ICNSwitchBase (object):
           print(" No CS Entry found : Gonna look in PIT")
           # Jeeva : PIT check
           pit_entry = self.pit_table.pit_entry_for_packet(packet, face)
-          if (pit_entry == True):
+          if (pit_entry != None):
             print (" PIT entry found : Added the port to the waiting list")
           else:
 
@@ -1027,10 +1030,16 @@ class ICNSwitchBase (object):
       self.pit_table.delete_pit_entry(interest)
       #Add to content store
       is_cs_full = self.content_store._entries_counter
+      print("Total entries in Content Store :", is_cs_full)
       #print(" **************** : Content Store Status :", is_cs_full)
-      if is_cs_full == 1:
+      if is_cs_full == 2:
         print (" Content Store is Full")
         self.send_cs_full()
+      else :
+        match = ofp_match(interest_name=interest)
+        entry = ContentStoreEntry(match=match, data=data)
+        self.content_store.add_entry(entry)
+        print("Added to content store")
         #Send the message
 
       #Jeeva : check for waiting faces in PIT
@@ -1110,7 +1119,7 @@ class ICNSwitchBase (object):
 
           # Jeeva : PIT check
           pit_entry = self.pit_table.pit_entry_for_packet(packet, in_port)
-          if (pit_entry == True):
+          if (pit_entry != None):
             print ("IN SWITCH : PIT entry Found in the table, Added the port to the waiting list")
           else:
 

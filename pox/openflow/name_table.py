@@ -747,9 +747,9 @@ class PitTable(EventMixin):
         else:
           print(" PIT : face is already in the faces list")
         #print (" PIT : faces list :", entry.faces)
-        return True
+        return entry
 
-    return False
+    return None
 
   def fetch_faces_from_pit_entry(self,interest_name):
     #Jeeva : check PIT and retirn the ports
@@ -1031,7 +1031,7 @@ class ContentStore(EventMixin):
     self._table = []
     self._max_entries = 5
     self._entries_counter = 0
-    self.initContentStore()
+    #self.initContentStore()
 
   def initContentStore(self):
     #print("Content Store : initContent Store")
@@ -1083,6 +1083,7 @@ class ContentStore(EventMixin):
 
   def add_entry(self, entry):
 
+    print(" **** Content store Add entry is called with : ,", entry)
     #print("\n\n Content Store : Content Store Entry to be added :", entry)
     #print(" Content Store : Content Store entry :", ContentStoreEntry)
     assert isinstance(entry, ContentStoreEntry)

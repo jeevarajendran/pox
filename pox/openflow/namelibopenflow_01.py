@@ -491,6 +491,7 @@ ofp_stats_reply_flags_rev_map = {
 ofp_packet_in_reason_rev_map = {
   'OFPR_NO_MATCH' : 0,
   'OFPR_ACTION'   : 1,
+  'OFPCS_FULL'    : 2,
 }
 
 ofp_flow_removed_reason_rev_map = {
@@ -532,10 +533,11 @@ ofp_flow_wildcards_rev_map = {
 
 #Jeeva
 
+'''
 ofp_content_store_rev_map = {
   'OFPCS_FULL' : 0,
 }
-
+'''
 
 
 

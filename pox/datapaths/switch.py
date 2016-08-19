@@ -366,6 +366,13 @@ class ICNSwitchBase (object):
     self.table.add_entry(FibTableEntry(match=match,actions=[ofp_action_outputface(face=face)]))
     fib_dict[interest_name]=face
 
+    #Entry 3:
+    interest_name="/test/switch2/csmatch"
+    face = 2
+    match = ofp_match(interest_name=interest_name)
+    self.table.add_entry(FibTableEntry(match=match,actions=[ofp_action_outputface(face=face)]))
+    fib_dict[interest_name]=face
+
   def init_content_store(self):
     # Entry 1
     interest_name = "/test/switch1csmatch"
@@ -650,6 +657,8 @@ class ICNSwitchBase (object):
     #self.content_store=
     #print("\n\n------------- Added new CS entry ---------------")
     self.content_store.clear_table()
+    cs_dict.clear()
+    start_new_thread(self.display_tables, ())
 
   def _rx_data_from_controller_cache (self, ofp, connection):
     """
@@ -929,7 +938,7 @@ class ICNSwitchBase (object):
     """
     #print(" ICN Switch BASE: send_cs_full function ")
 
-    msg = ofp_cs_full()
+    msg = ofp_cs_full(xid = 0)
 
     #print(" ICN Switch BASE : CS Full msg :", msg)
 
@@ -1107,12 +1116,18 @@ class ICNSwitchBase (object):
           print(" CS entry found : ")
           packet = ethernet(raw=content_store_data)
           self._output_packet_face(packet, face)
+          start_new_thread(self.display_tables, ())
         else:
           print(" No CS Entry found : Gonna look in PIT")
           # Jeeva : PIT check
           pit_entry = self.pit_table.pit_entry_for_packet(packet, face)
-          if (pit_entry == True):
+          if (pit_entry != None):
             print (" PIT entry found : Added the port to the waiting list")
+            interest_name = pit_entry.match.interest_name
+            faces = pit_dict.get(interest_name)
+            faces.append(face)
+            pit_dict[interest_name] = faces
+            start_new_thread(self.display_tables, ())
           else:
 
             # Jeeva : FIB check
@@ -1152,7 +1167,8 @@ class ICNSwitchBase (object):
                 new_pit_entry = PitTableEntry(match=match,faces=[face])
                 self.pit_table.add_entry(new_pit_entry)
                 interest_name = match.interest_name
-                faces = [face]
+                faces = []
+                faces.append(face)
                 pit_dict[interest_name]=faces
                 start_new_thread(self.display_tables, ())
       else :
@@ -1161,7 +1177,8 @@ class ICNSwitchBase (object):
       print(" This is a Data Packet")
       #Extract Interest and Data from the packet
       interest = raw_packet[len("Interest:"):-len(raw_packet[raw_packet.index(",Data:"):])]
-      data = raw_packet[-raw_packet.index("Data:"):]
+      data = raw_packet[raw_packet.index("Data:")+len("Data:"):]
+      #[-raw_packet.index("Data:"):]
       #print(" Interest :", interest)
       #print(" Data :", data)
       faces = self.pit_table.fetch_faces_from_pit_entry(interest)
@@ -1174,14 +1191,24 @@ class ICNSwitchBase (object):
           if interest in pit_dict:
             del pit_dict[interest]
           print pit_dict
+          #start_new_thread(self.display_tables, ())
           self._output_packet_face(packet, face)
 
       #Add to content store
       is_cs_full = self.content_store._entries_counter
+      print("Total entries in Content Store :", is_cs_full)
+      print(self.content_store.entries)
       #print(" **************** : Content Store Status :", is_cs_full)
-      if is_cs_full == 1:
+      if is_cs_full == 2:
         print (" Content Store is Full")
         self.send_cs_full()
+      else :
+        match = ofp_match(interest_name=interest)
+        entry = ContentStoreEntry(match=match, data=data)
+        self.content_store.add_entry(entry)
+        print("Added to content store")
+        cs_dict[interest] = data
+        start_new_thread(self.display_tables, ())
         #Send the message
 
       #Jeeva : check for waiting faces in PIT
@@ -1261,7 +1288,7 @@ class ICNSwitchBase (object):
 
           # Jeeva : PIT check
           pit_entry = self.pit_table.pit_entry_for_packet(packet, in_port)
-          if (pit_entry == True):
+          if (pit_entry != None):
             print ("IN SWITCH : PIT entry Found in the table, Added the port to the waiting list")
           else:
 

@@ -60,7 +60,7 @@ class Tutorial (object):
     self.content_dict = {'/test/data1':"Sample_data_1",'/test/data2':"Sample_data_2",'/test/data3':"Sample_data_3",
                          '/test/data4': "Sample_data_4",'/test/controllerhasdata':"Data_for_controller_has_data"}
 
-    self.init_content_store()
+    #self.init_content_store()
 
   def init_content_store(self):
     #print("\n\n\n")
