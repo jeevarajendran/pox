@@ -101,6 +101,7 @@ class Tutorial (object):
     "packet_in" is the ofp_packet_in object the switch had sent to the
     controller due to a table-miss.
     """
+    print("\n Sending PACKET_OUT message to switch to send the packet in a face\n")
     msg = of.ofp_packet_out()
     msg.data = packet_in
 
@@ -178,6 +179,7 @@ class Tutorial (object):
         #msg.actions.append(of.ofp_action_outputface(face=face))
         #print msg
         #msg.data = event.ofp
+        print("\n Sending FIB_MOD to switch \n")
         msg = of.ofp_fib_mod()
         msg.interest_name=interest_name
         msg.face=face
@@ -197,7 +199,7 @@ class Tutorial (object):
     """
         Handles content announcement messages from the switch.
         """
-    #print(" ********* Handling Content Announcement messages  *******************")
+    print("\n Handling Content Announcement messages  \n")
     packet = event.parsed.raw
     content_interest_name = (packet.split("Content:"))[1]
     #print content_interest_name
@@ -212,16 +214,17 @@ class Tutorial (object):
     """
     Handles packet in messages from the switch.
     """
-    #print(" ********* Handling CSFull Event  *******************")
+    print("\n Handling CSFull Event \n")
     msg= of.ofp_clear_cs()
     self.connection.send(msg)
-    #print(" ********* Sent Content Store Clear message ***************")
+    print("\n Sent CS_CLEAR message \n")
 
   def _handle_PacketIn (self, event):
     """
     Handles packet in messages from the switch.
     """
     log.debug(" OF_TUTORIAL : Got a PacketIn Event from : %s" % event.source)
+    print("\n Handling PacketIn Event \n")
     packet = event.parsed # This is the parsed packet data.
     if not packet.parsed:
       log.warning("Ignoring incomplete packet")

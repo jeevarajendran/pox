@@ -146,7 +146,7 @@ class ICNSwitchBase (object):
     self.port_stats = {}
 
     #Jeeva faces list
-    self.faces = {"lo":1,"eth0":2}
+    self.faces = {"lo":1,"wlan0":2}
     self.faces_to_dev = {1: "S1", 2: "H2"}
     #self.face_to_dev = {"S1":1,"H2":2}
     self.face_thread = {}
@@ -326,6 +326,7 @@ class ICNSwitchBase (object):
                   interest_name = content_part.split("Content:")[1]
                   seen_part = data_split[1]
                   if seen_part == "To:" + self.switch_name:
+                    print("\n Received content registration \n")
                     #print("Received Content Packet")
                     #print(
                     # " ICN SWITCH : I am seeing this CONTENT packet for the 1st time : Sending to rx_packet_from_face")
@@ -507,6 +508,7 @@ class ICNSwitchBase (object):
     """
     Handles flow mods
     """
+    print("\n Handling ADD_CS_ENTRY message \n")
     #print("\n\n------------- Handling ADD CS ENTRY message in Switch---------------")
     #print(" ****** Match = ", ofp.match)
     #print(" ****** Interest_name  = ", ofp.interest_name)
@@ -520,6 +522,7 @@ class ICNSwitchBase (object):
     """
     Handles flow mods
     """
+    print("\n Handling CLEAR_CS message \n")
     #print("\n\n------------- Handling CLEAR CS message in Switch---------------")
     #self.content_store=
     #print("\n\n------------- Added new CS entry ---------------")
@@ -529,6 +532,7 @@ class ICNSwitchBase (object):
     """
     Handles flow mods
     """
+    print("\n Handling  DATA from controller cache message \n")
     #print("\n\n------------- Handling  DATA from controller cache message in Switch---------------")
     #print(" Interest_name :", ofp.interest_name.split("$")[0])
     interest_name = ofp.interest_name.split("$")[0]
@@ -560,6 +564,7 @@ class ICNSwitchBase (object):
     """
     Handles flow mods
     """
+    print("\nHandling  FIB_MOD \n")
     #print("\n\n------------- Handling  FIB mod from controller ---------------")
     #print ofp.interest_name
     #print dir(ofp.face)
@@ -969,13 +974,13 @@ class ICNSwitchBase (object):
     #print(" RAW Packet :", raw_packet)
     if "Data:" not in raw_packet :
       if "Interest:" in raw_packet :
-        print(" This is an Interest Packet", raw_packet)
+        print("\n\n * Got an Interest Packet * \n")
 
         # Jeeva : CS check
 
         content_store_data = self.content_store.content_store_entry_for_packet(packet, face)
         if (content_store_data != None):
-          print(" CS entry found : ")
+          print(" CS entry found")
           packet = ethernet(raw=content_store_data)
           self._output_packet_face(packet, face)
         else:
@@ -996,7 +1001,7 @@ class ICNSwitchBase (object):
               self._matched_count += 1
               fib_entry.touch_packet(len(packet))
               if "Interest" in raw_packet:
-                print(" Gonna send the packet out in the face and Add in PIT")
+                print(" Gonna send the packet out in the face and add in PIT")
                 match = of.ofp_match.from_packet(packet)
                 #print(" ************ Gonn add PIT entry with the face :", face)
                 new_pit_entry = PitTableEntry(match=match, faces=[face])
@@ -1026,7 +1031,7 @@ class ICNSwitchBase (object):
       else :
         print(" Not Interest/Data/Announcement packet")
     else:
-      print(" This is a Data Packet")
+      print("\n\n * Got a Data Packet * \n")
       #Extract Interest and Data from the packet
       interest = raw_packet[len("Interest:"):-len(raw_packet[raw_packet.index(",Data:"):])]
       data = raw_packet[-raw_packet.index("Data:"):]
@@ -1034,22 +1039,27 @@ class ICNSwitchBase (object):
       #print(" Data :", data)
       faces = self.pit_table.fetch_faces_from_pit_entry(interest)
       if (faces != True):
-        print (" Faces to send the data :", faces)
+        print (" Faces to send the data packet :", faces)
         for face in faces:
+          self.pit_table.delete_pit_entry(interest)
+          #print pit_dict
+          print (" Gonna delete the pit entry")
+          #print pit_dict
+          #start_new_thread(self.display_tables, ())
           self._output_packet_face(packet, face)
-      self.pit_table.delete_pit_entry(interest)
+
       #Add to content store
       is_cs_full = self.content_store._entries_counter
-      print("Total entries in Content Store :", is_cs_full)
+      print(" Total entries in Content Store :", is_cs_full)
       #print(" **************** : Content Store Status :", is_cs_full)
       if is_cs_full == 10:
-        print (" Content Store is Full")
+        print (" Content Store is FULL")
         self.send_cs_full()
       else :
         match = ofp_match(interest_name=interest)
         entry = ContentStoreEntry(match=match, data=data)
         self.content_store.add_entry(entry)
-        print("Added to content store")
+        print(" Added content to content store")
         #Send the message
 
       #Jeeva : check for waiting faces in PIT

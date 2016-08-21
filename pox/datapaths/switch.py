@@ -246,7 +246,7 @@ class ICNSwitchBase (object):
     self.port_stats = {}
 
     #Jeeva faces list
-    self.faces = {"eth0":1,"lo":2}
+    self.faces = {"wlan0":1,"lo":2}
     self.faces_to_dev = {1: "H1", 2: "S2"}
     #self.face_to_dev = {"S1":1,"H2":2}
     self.face_thread = {}
@@ -478,7 +478,7 @@ class ICNSwitchBase (object):
                   interest_name = content_part.split("Content:")[1]
                   seen_part = data_split[1]
                   if seen_part == "To:" + self.switch_name:
-                    #print("Received Content Packet")
+                    print("\n Received content registration\n")
                     #print(
                     # " ICN SWITCH : I am seeing this CONTENT packet for the 1st time : Sending to rx_packet_from_face")
                     # face = original_packet[1][0]
@@ -658,7 +658,7 @@ class ICNSwitchBase (object):
     """
     Handles flow mods
     """
-    #print("\n\n------------- Handling ADD CS ENTRY message in Switch---------------")
+    print("\n Handling ADD_CS_ENTRY message \n")
     #print(" ****** Match = ", ofp.match)
     #print(" ****** Interest_name  = ", ofp.interest_name)
     #print(" ****** Data  = ", ofp.data)
@@ -671,7 +671,7 @@ class ICNSwitchBase (object):
     """
     Handles flow mods
     """
-    #print("\n\n------------- Handling CLEAR CS message in Switch---------------")
+    print("\n Handling CLEAR_CS message \n")
     #self.content_store=
     #print("\n\n------------- Added new CS entry ---------------")
     self.content_store.clear_table()
@@ -682,7 +682,7 @@ class ICNSwitchBase (object):
     """
     Handles flow mods
     """
-    #print("\n\n------------- Handling  DATA from controller cache message in Switch---------------")
+    print("\n Handling  DATA from controller cache message \n")
     #print(" Interest_name :", ofp.interest_name.split("$")[0])
     interest_name = ofp.interest_name.split("$")[0]
     #print(" Data :", ofp.data)
@@ -713,7 +713,7 @@ class ICNSwitchBase (object):
     """
     Handles flow mods
     """
-    #print("\n\n------------- Handling  FIB mod from controller ---------------")
+    print("\nHandling  FIB_MOD \n")
     #print ofp.interest_name
     #print dir(ofp.face)
 
@@ -1125,13 +1125,13 @@ class ICNSwitchBase (object):
     #print(" RAW Packet :", raw_packet)
     if "Data:" not in raw_packet :
       if "Interest:" in raw_packet :
-        print(" This is an Interest Packet")
+        print("\n\n * Got an Interest Packet * \n")
 
         # Jeeva : CS check
 
         content_store_data = self.content_store.content_store_entry_for_packet(packet, face)
         if (content_store_data != None):
-          print(" CS entry found : ")
+          print(" CS entry found ")
           packet = ethernet(raw=content_store_data)
           self._output_packet_face(packet, face)
           start_new_thread(self.display_tables, ())
@@ -1158,12 +1158,12 @@ class ICNSwitchBase (object):
               self._matched_count += 1
               fib_entry.touch_packet(len(packet))
               if "Interest" in raw_packet:
-                print(" Gonna send the packet out in the face and Add in PIT")
+                print(" Gonna send the packet out in the face and add in PIT")
                 match = of.ofp_match.from_packet(packet)
                 #print(" ************ Gonn add PIT entry with the face :", face)
                 new_pit_entry = PitTableEntry(match=match, faces=[face])
                 self.pit_table.add_entry(new_pit_entry)
-                print(" Gonna process the packet based in the actions found in FIB")
+                print(" Gonna process the packet based on the actions found in FIB")
                 self._process_actions_for_packet_face(fib_entry.actions, packet, face)
 
             else:
@@ -1179,7 +1179,7 @@ class ICNSwitchBase (object):
               self.send_packet_in_face(face, buffer_id, packet_data,
                                   reason=OFPR_NO_MATCH, data_length=self.miss_send_len)
               if "Interest" in raw_packet :
-                print(" Sent the interest packet to controller : Add in PIT")
+                print(" Sent the interest packet to controller : Going to add in PIT")
                 match = of.ofp_match.from_packet(packet)
                 #print(" ************ Gonn add PIT entry with the face :", face)
                 new_pit_entry = PitTableEntry(match=match,faces=[face])
@@ -1192,7 +1192,7 @@ class ICNSwitchBase (object):
       else :
         print(" Not Interest/Data/Announcement packet")
     else:
-      print(" This is a Data Packet")
+      print("\n\n * Got a  a Data Packet * \n")
       #Extract Interest and Data from the packet
       interest = raw_packet[len("Interest:"):-len(raw_packet[raw_packet.index(",Data:"):])]
       data = raw_packet[raw_packet.index("Data:")+len("Data:"):]
@@ -1201,30 +1201,30 @@ class ICNSwitchBase (object):
       #print(" Data :", data)
       faces = self.pit_table.fetch_faces_from_pit_entry(interest)
       if (faces != True):
-        print (" Faces to send the data :", faces)
+        print (" Faces to send the data packet : ", faces)
         for face in faces:
           self.pit_table.delete_pit_entry(interest)
-          print pit_dict
-          print ("**** Gonna delete the pit entry")
+          #print pit_dict
+          #print ("**** Gonna delete the pit entry")
           if interest in pit_dict:
             del pit_dict[interest]
-          print pit_dict
+          #print pit_dict
           #start_new_thread(self.display_tables, ())
           self._output_packet_face(packet, face)
 
       #Add to content store
       is_cs_full = self.content_store._entries_counter
-      print("Total entries in Content Store :", is_cs_full)
+      print(" Total entries in Content Store :", is_cs_full)
       #print(self.content_store.entries)
       #print(" **************** : Content Store Status :", is_cs_full)
       if is_cs_full == 2:
-        print (" Content Store is Full")
+        print (" Content Store is FULL")
         self.send_cs_full()
       else :
         match = ofp_match(interest_name=interest)
         entry = ContentStoreEntry(match=match, data=data)
         self.content_store.add_entry(entry)
-        print("Added to content store")
+        print(" Added content to content store\n")
         cs_dict[interest] = data
         start_new_thread(self.display_tables, ())
         #Send the message
