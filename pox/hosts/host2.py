@@ -5,6 +5,9 @@ import time
 import socket, sys
 from struct import *
 
+content_dict = {'/test/host2': "Hi This is Host 2  I got your request How are you?,To:S2",
+                '/test/host2/video1': "Streaming Video 1",
+                '/test/host2/video2': "Streaming Video 2"}
 
 # Define a function for the thread
 def interest_thread(interface):
@@ -66,6 +69,7 @@ def data_thread(interface):
                         if "Interest:" in data:
                             data_split = data.split(",")
                             interest_part = data_split[0]
+                            interest_name = interest_part.split("Interest:")[1]
                             seen_part = data_split[1]
                             if seen_part == "To:H2":
                                 print("\n")
@@ -73,7 +77,7 @@ def data_thread(interface):
                                 src = "\xFE\xED\xFA\xCE\xBE\xEF"
                                 dst = "\xFE\xED\xFA\xCE\xBE\xEF"
                                 eth_type = "\x7A\x05"
-                                payload = interest_part+",Data: Hi This is Host 2  I got your request How are you?,To:S2"
+                                payload = interest_part+",Data: "+ content_dict[interest_name]+",To:S2"
                                 s.send(src + dst + eth_type + payload)
                                 print("-------- Sent Data back to the face -------- ")
                                 print("\n")
@@ -107,6 +111,8 @@ def data_thread(interface):
 try:
     s = socket.socket(socket.AF_PACKET, socket.SOCK_RAW, socket.ntohs(0x0003))
     s.bind(("eth0", 0))
+    #s1 = socket.socket(socket.AF_PACKET, socket.SOCK_RAW, socket.ntohs(0x0003))
+    #s1.bind(("eth0", 0))
     thread.start_new_thread(interest_thread, (s,))
     thread.start_new_thread(data_thread, (s,))
 
@@ -117,6 +123,17 @@ try:
     # input_data = raw_input("")
     payload = "Content:/test/host2,To:S2"
     s.send(src + dst + eth_type + payload)
+    #print("Sleeping")
+    time.sleep(2)
+    #print("Finished Sleeping")
+    payload = "Content:/test/host2/video2,To:S2"
+    s.send(src + dst + eth_type + payload)
+    #print("Sent second")
+    time.sleep(2)
+    # print("Finished Sleeping")
+    payload = "Content:/test/host2/video1,To:S2"
+    s.send(src + dst + eth_type + payload)
+    # print("Sent second")
 except:
     print "Error: unable to start thread"
 

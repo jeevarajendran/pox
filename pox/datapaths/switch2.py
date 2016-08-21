@@ -321,11 +321,12 @@ class ICNSwitchBase (object):
                     '''
                     #print(" ICN SWITCH : I have already seen this INTEREST packet : Doing Nothing")
                 elif "Content:" in data:
-                  #print(" ICN SWITCH : This is a CONTENT packet")
                   data_split = data.split(",")
                   content_part = data_split[0]
+                  interest_name = content_part.split("Content:")[1]
                   seen_part = data_split[1]
                   if seen_part == "To:" + self.switch_name:
+                    #print("Received Content Packet")
                     #print(
                     # " ICN SWITCH : I am seeing this CONTENT packet for the 1st time : Sending to rx_packet_from_face")
                     # face = original_packet[1][0]
@@ -333,6 +334,15 @@ class ICNSwitchBase (object):
                     # print self.faces[face]
                     # packet = ethernet(raw=interest_part)
                     # self.rx_packet_from_face(packet, self.faces[face])
+                    #print content_part
+                    face = original_packet[1][0]
+                    #print face
+                    #print interest_name
+                    match = of.ofp_match(interest_name=interest_name)
+                    action = of.ofp_action_outputface(face=self.faces[face])
+                    new_fib_entry = FibTableEntry(match=match, actions=[action])
+                    self.table.add_entry(new_fib_entry)
+                    #print self.table.entries
                     self.send_content_announcement(content_part)
                     #print("-----------------Sent content announcement------------")
                 else:
@@ -959,7 +969,7 @@ class ICNSwitchBase (object):
     #print(" RAW Packet :", raw_packet)
     if "Data:" not in raw_packet :
       if "Interest:" in raw_packet :
-        print(" This is an Interest Packet")
+        print(" This is an Interest Packet", raw_packet)
 
         # Jeeva : CS check
 
@@ -1032,7 +1042,7 @@ class ICNSwitchBase (object):
       is_cs_full = self.content_store._entries_counter
       print("Total entries in Content Store :", is_cs_full)
       #print(" **************** : Content Store Status :", is_cs_full)
-      if is_cs_full == 2:
+      if is_cs_full == 10:
         print (" Content Store is Full")
         self.send_cs_full()
       else :

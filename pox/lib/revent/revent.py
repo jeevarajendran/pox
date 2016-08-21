@@ -214,7 +214,7 @@ class EventMixin (object):
     self._eventMixin_init()
 
   def _eventMixin_init (self):
-    print(" In eventMixin Init \n")
+    #print(" In eventMixin Init \n")
     if not hasattr(self, "_eventMixin_events"):
       #print(" No eventMixin events \n")
       setattr(self, "_eventMixin_events", True)
@@ -234,10 +234,10 @@ class EventMixin (object):
     #TODO: this should really keep subsequent events executing and print
     #      the specific handler that failed...
     try:
-      print(" EventMixin : raiseEventNoErrors : Gonna Raise the event : ", event)
+      print(" Event : ", event)
       return self.raiseEvent(event, *args, **kw)
     except:
-      print(" EventMixin : raiseEventNoErrors : Exception in event raising \n")
+      #print(" EventMixin : raiseEventNoErrors : Exception in event raising \n")
       if handleEventException is not None:
         import sys
         handleEventException(self, event, args, kw, sys.exc_info())
@@ -251,7 +251,7 @@ class EventMixin (object):
     Returns the event object, unless it was never created (because there
     were no listeners) in which case returns None.
     """
-    print(" EventMixin : rasieEvent : event to be raised : ", event)
+    print(" Event : ", event)
     self._eventMixin_init()
     #print("check 1 ")
     classCall = False
@@ -266,7 +266,7 @@ class EventMixin (object):
       # Check for early-out
       #print(" EventMixin : rasieEvent : self._eventMixin_handlers : ", self._eventMixin_handlers)
       if event not in self._eventMixin_handlers:
-        print(" EventMixin : rasieEvent : No Handlers ")
+        #print(" EventMixin : rasieEvent : No Handlers ")
         return None
       #print(" $$$$$$ EventMixin : rasieEvent : even in eventmixin handlers ")
       if len(self._eventMixin_handlers[event]) == 0:
@@ -285,7 +285,7 @@ class EventMixin (object):
     #print("raise",event,eventType)
     if (self._eventMixin_events is not True
         and eventType not in self._eventMixin_events):
-      print("EventMixin : rasieEvent : Runtime error **********")
+      #print("EventMixin : rasieEvent : Runtime error **********")
       raise RuntimeError("Event %s not defined on object of type %s"
                          % (eventType, type(self)))
 
@@ -295,11 +295,11 @@ class EventMixin (object):
     #print(" EventMixin : rasieEvent :  Handlers list : ", handlers)
     for (priority, handler, once, eid) in handlers:
       if classCall:
-        print(" EventMixin : rasieEvent : Found handler : Invoke : ", handler, "\n")
+        #print(" EventMixin : rasieEvent : Found handler : Invoke : ", handler, "\n")
         rv = event._invoke(handler, *args, **kw)
       else:
         rv = handler(event, *args, **kw)
-        print(" EventMixin : Handler : ", rv)
+        #print(" EventMixin : Handler : ", rv)
       if once: self.removeListener(eid)
       if rv is None: continue
       if rv is False:

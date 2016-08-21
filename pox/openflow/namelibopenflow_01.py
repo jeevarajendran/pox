@@ -3931,7 +3931,7 @@ class ofp_content_announcement (ofp_header):
     # print("offset = ", offset)
     #print("length = ", length)
     offset, self.interest_name = self._read_interest(raw, offset, length)
-
+    #print("interest_name :", self.interest_name)
     # print("offset = ", offset)
     #print("interest_name = ", self.interest_name)
     #offset, self.data = _read(raw, offset, length - offset)  # (length-offset)- Subtract the previously read bytes

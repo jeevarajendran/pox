@@ -52,15 +52,10 @@ class Tutorial (object):
     self.mac_to_port = {}
     self.connected_switches = {291:"S1",1110:"S2"}
     self.switch_config = {291:{"H1":1,"S2":2},1110:{"S1":1,"H2":2}} #291 is dpid for S1, 1110 dpid for S2
-    '''
-    self.name_table = {'/test/contentstorematch':'4','/test/pitmatch':'3','/test/fibmatch':'2',
-                       '/test/nomatch':'1'} #Jeeva : change 3 back to 999 for the hostmatch test to work
-    '''
 
     self.content_dict = {'/test/data1':"Sample_data_1",'/test/data2':"Sample_data_2",'/test/data3':"Sample_data_3",
                          '/test/data4': "Sample_data_4",'/test/controllerhasdata':"Data_for_controller_has_data"}
 
-    #self.init_content_store()
 
   def init_content_store(self):
     #print("\n\n\n")
